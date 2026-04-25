@@ -150,6 +150,26 @@ async def get_toolsets():
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
+@app.get("/api/briefing")
+async def get_briefing():
+    """Morning briefing: recent conversations, pending crons, latest briefing output."""
+    try:
+        data = await hermes.get_briefing()
+        return {"ok": True, "data": data}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@app.get("/api/sessions")
+async def get_sessions():
+    """Active sessions across all platforms."""
+    try:
+        sessions = await hermes.get_active_sessions()
+        return {"ok": True, "data": sessions}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
 @app.get("/api/skills")
 async def get_skills():
     try:

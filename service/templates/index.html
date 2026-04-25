@@ -44,8 +44,8 @@
     /* ── Main Grid ────────────────────────────────────────── */
     #grid {
       display: grid;
-      grid-template-columns: 280px 1fr 300px;
-      grid-template-rows: auto 1fr;
+      grid-template-columns: 1fr 1fr 300px;
+      grid-template-rows: auto auto 1fr;
       gap: 12px;
       padding: 12px;
       min-height: calc(100vh - 48px);
@@ -71,6 +71,7 @@
     .panel-body { padding: 10px 12px; overflow-y: auto; flex: 1; }
 
     /* ── Status Panel ─────────────────────────────────────── */
+    #status-panel { grid-column: 1; grid-row: 1; }
     #status-panel .platform-row {
       display: flex; align-items: center; justify-content: space-between;
       padding: 6px 0;
@@ -81,8 +82,20 @@
     .platform-name { display: flex; align-items: center; gap: 6px; }
     #gateway-info { font-size: 0.72rem; color: var(--muted); margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
 
+    /* ── Sessions Panel ───────────────────────────────────── */
+    #sessions-panel { grid-column: 1; grid-row: 3; }
+    .session-item {
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.75rem;
+    }
+    .session-item:last-child { border-bottom: none; }
+    .session-platform { color: var(--muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .session-name { color: var(--text); font-weight: 500; }
+    .session-meta { color: var(--muted); font-size: 0.68rem; }
+
     /* ── Activity Feed ────────────────────────────────────── */
-    #feed-panel { grid-row: 1 / 3; }
+    #feed-panel { grid-column: 2; grid-row: 1; }
     #feed-list { list-style: none; font-size: 0.75rem; }
     #feed-list li {
       padding: 5px 0;
@@ -95,7 +108,7 @@
     #feed-empty { color: var(--muted); font-size: 0.75rem; text-align: center; padding: 20px 0; }
 
     /* ── Command Bar ──────────────────────────────────────── */
-    #cmd-panel { grid-column: 2; }
+    #cmd-panel { grid-column: 1 / 3; grid-row: 2; }
     #cmd-input-wrap { display: flex; gap: 8px; }
     #cmd-input {
       flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
@@ -114,7 +127,7 @@
     #cmd-response.error { color: var(--red); }
 
     /* ── Hermes Brain ─────────────────────────────────────── */
-    #brain-panel { grid-column: 3; }
+    #brain-panel { grid-column: 3; grid-row: 1 / 3; }
     #brain-section { margin-bottom: 12px; }
     #brain-section h3 { font-size: 0.7rem; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.08em; }
     #brain-section p, #brain-section .val {
@@ -156,6 +169,17 @@
   <div class="clock" id="clock"></div>
 </div>
 
+<!-- ── Briefing Strip ───────────────────────────────────────────────────────── -->
+<div id="briefing-strip" style="display:none; margin: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+  <div style="display:flex; align-items:center; gap:8px; padding: 8px 12px; background: var(--surface2); border-bottom: 1px solid var(--border); font-size:0.7rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted);">
+    🌅 Morning Briefing
+    <span id="briefing-time" style="margin-left:auto; color:var(--muted); font-weight:400; text-transform:none; letter-spacing:0;"></span>
+  </div>
+  <div id="briefing-content" style="padding: 10px 12px; font-size:0.78rem; color:var(--text); line-height:1.6; max-height:120px; overflow-y:auto;">
+    Loading briefing...
+  </div>
+</div>
+
 <!-- ── Main Grid ─────────────────────────────────────────────────────────── -->
 <div id="grid">
 
@@ -165,6 +189,14 @@
     <div class="panel-body">
       <div id="gateway-info">Loading...</div>
       <div id="platform-list">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Sessions Panel -->
+  <div class="panel" id="sessions-panel">
+    <div class="panel-header">💬 Active Sessions</div>
+    <div class="panel-body">
+      <div id="sessions-list">Loading...</div>
     </div>
   </div>
 
@@ -319,34 +351,56 @@
     addFeed('command', prompt.slice(0, 60));
 
     try {
-      const res = await fetch(API + '/api/command', {
+      const res = await fetch(API + '/api/command/stream', {
         method: 'POST',
         signal: cmdController.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
       });
-      const d = await res.json();
-      if (d.ok) {
-        const fullText = d.data.response;
-        // Progressive render: simulate streaming with a typing animation
-        resp.textContent = '';
-        let i = 0;
-        const speed = 12; // chars per frame (~20ms frame = 600ch/s, feels fast)
-        function typeChunk() {
-          if (i < fullText.length) {
-            resp.textContent += fullText.slice(i, i + speed);
-            i += speed;
-            setTimeout(typeChunk, 20);
-          } else {
-            resp.textContent = fullText;
+
+      if (!res.ok) {
+        const d = await res.json();
+        resp.textContent = 'Error: ' + (d.error || res.status);
+        resp.className = 'error';
+        return;
+      }
+
+      // Real streaming: read tokens from SSE body as they arrive
+      resp.textContent = '';
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let_in_progress = false;
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          // SSE lines: "event: token\ndata: <token>\n\n" or "event: done\ndata: \n\n"
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              _cmdEventType = line.slice(7).trim();
+            } else if (line.startsWith('data: ')) {
+              const payload = line.slice(6).trim();
+              if (_cmdEventType === 'token' && payload) {
+                resp.textContent += payload;
+              } else if (_cmdEventType === 'done') {
+                addFeed('hermes', resp.textContent.slice(0, 80));
+                input.value = '';
+                _cmdEventType = null;
+              } else if (_cmdEventType === 'error' && payload) {
+                resp.textContent = 'Error: ' + payload;
+                resp.className = 'error';
+              }
+            }
           }
         }
-        typeChunk();
-        addFeed('hermes', fullText.slice(0, 80));
-        input.value = '';
-      } else {
-        resp.textContent = 'Error: ' + d.error;
-        resp.className = 'error';
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          resp.textContent = 'Error: stream interrupted';
+          resp.className = 'error';
+        }
       }
     } catch (e) {
       if (e.name !== 'AbortError') {
@@ -356,11 +410,67 @@
     }
   }
 
+  let _cmdEventType = null;
+
   el('cmd-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') submitCmd();
   });
 
-  // ── Hermes Brain ───────────────────────────────────────────────────────────
+  // ── Morning Briefing ────────────────────────────────────────────────────────
+  async function loadBriefing() {
+    const strip = el('briefing-strip');
+    const content = el('briefing-content');
+    const time = el('briefing-time');
+    const d = await api('/api/briefing');
+    if (!d.ok || !d.data) return;
+
+    const b = d.data;
+    const mb = b.morning_briefing;
+    const crons = b.pending_crons || [];
+
+    if (mb && mb.preview) {
+      strip.style.display = 'block';
+      content.textContent = mb.preview.slice(0, 400) + (mb.preview.length > 400 ? '…' : '');
+      // Show when this briefing was generated
+      const sessionId = mb.session_id || '';
+      const datePart = sessionId.match(/(\d{8})_(\d{6})/);
+      if (datePart) {
+        const dStr = datePart[1], tStr = datePart[2];
+        time.textContent = `${dStr.slice(0,4)}-${dStr.slice(4,6)}-${dStr.slice(6,8)} ${tStr.slice(0,2)}:${tStr.slice(2,4)} UTC`;
+      } else {
+        time.textContent = '';
+      }
+    } else {
+      // Still show pending crons strip even without briefing
+      if (crons.length > 0) {
+        strip.style.display = 'block';
+        const next = crons.slice(0, 3);
+        content.innerHTML = '<span style="color:var(--muted);font-size:0.72rem">Upcoming: </span>'
+          + next.map(c => `<span style="color:var(--accent)">${c.name}</span>`).join(' · ');
+        time.textContent = '';
+      }
+    }
+  }
+
+  // ── Sessions ────────────────────────────────────────────────────────────────
+  async function loadSessions() {
+    const list = el('sessions-list');
+    const d = await api('/api/sessions');
+    if (!d.ok || !d.data || d.data.length === 0) {
+      list.innerHTML = '<p style="font-size:0.72rem;color:var(--muted)">No active sessions</p>';
+      return;
+    }
+    list.innerHTML = d.data.map(s => {
+      const platformIcon = s.platform === 'discord' ? '💬' : s.platform === 'telegram' ? '✈️' : '🔌';
+      const updated = s.updated_at ? s.updated_at.slice(0, 16).replace('T', ' ') : '—';
+      const tokens = s.total_tokens ? `· ${Math.round(s.total_tokens / 100) / 10}k tok` : '';
+      return `<div class="session-item">
+        <div class="session-platform">${platformIcon} ${s.platform}</div>
+        <div class="session-name">${s.display_name || s.key}</div>
+        <div class="session-meta">${s.message_count} msgs ${tokens} · ${updated}</div>
+      </div>`;
+    }).join('');
+  }
   async function loadBrain() {
     const d = await api('/api/context');
     if (!d.ok) return;
@@ -441,10 +551,13 @@
   async function boot() {
     await loadStatus();
     await loadBrain();
+    await loadBriefing();
+    await loadSessions();
     loadFeed();
     connectSSE();
     setInterval(loadStatus, 30000);
     setInterval(loadBrain, 60000);
+    setInterval(loadSessions, 30000);
   }
 
   boot();

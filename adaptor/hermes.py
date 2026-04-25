@@ -238,13 +238,126 @@ class HermesAdaptor:
             crons = await self.get_cron_jobs()
         except Exception:
             crons = []
+        try:
+            sessions = await self.get_active_sessions()
+        except Exception:
+            sessions = []
         return {
             "status": asdict(status) if status else {},
             "cron_jobs": [asdict(j) for j in crons],
             "toolsets": [],
             "skills": [],
             "model": {"model": "MiniMax-M2.7", "provider": "minimax"},
+            "sessions": sessions,
         }
+
+    async def get_active_sessions(self) -> list[dict]:
+        """
+        Return the most recent sessions across all platforms.
+        Reads sessions.json as the index, then enriches with recent message count.
+        """
+        sessions_file = self._hermes_home / "sessions" / "sessions.json"
+        if not sessions_file.exists():
+            return []
+
+        try:
+            index = json.loads(sessions_file.read_text())
+        except Exception:
+            return []
+
+        result = []
+        for key, info in index.items():
+            # Parse key: 'agent:main:platform:channel_type:channel_id'
+            parts = key.split(":")
+            platform = parts[2] if len(parts) >= 3 else "?"
+            session_id = info.get("session_id", "")
+            # Find the session file
+            session_file = self._hermes_home / "sessions" / f"session_{session_id}.json"
+            msg_count = 0
+            if session_file.exists():
+                try:
+                    with session_file.open() as f:
+                        s = json.load(f)
+                        msg_count = s.get("message_count", 0)
+                except Exception:
+                    pass
+            result.append({
+                "key": key,
+                "platform": platform,
+                "session_id": session_id,
+                "display_name": info.get("display_name", key),
+                "created_at": info.get("created_at", ""),
+                "updated_at": info.get("updated_at", ""),
+                "message_count": msg_count,
+                "total_tokens": info.get("total_tokens", 0),
+                "input_tokens": info.get("input_tokens", 0),
+                "output_tokens": info.get("output_tokens", 0),
+            })
+
+        # Sort by updated_at desc
+        result.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
+        return result[:10]  # top 10 recent
+
+    async def get_briefing(self) -> dict:
+        """
+        Morning briefing: get the latest morning briefing cron run output
+        and the most recent conversations across platforms.
+        Returns a synthesized summary of what's been happening.
+        """
+        briefing = {
+            "morning_briefing": None,
+            "recent_conversations": [],
+            "pending_crons": [],
+            "system_state": {},
+        }
+
+        # Find most recent morning briefing session
+        sessions_dir = self._hermes_home / "sessions"
+        if sessions_dir.exists():
+            cron_sessions = [
+                f for f in sessions_dir.iterdir()
+                if f.is_file() and f.name.startswith("session_cron_")
+            ]
+            # Sort by mtime desc
+            cron_sessions.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+
+            # Look for morning briefing in recent cron sessions
+            for session_file in cron_sessions[:8]:
+                try:
+                    with session_file.open() as f:
+                        data = json.load(f)
+                        msgs = data.get("messages", [])
+                        if msgs:
+                            # Get last assistant message as the briefing
+                            for m in reversed(msgs):
+                                if m.get("role") == "assistant":
+                                    content = m.get("content", "")
+                                    # Skip very short messages (likely not a briefing)
+                                    if len(content) > 200:
+                                        briefing["morning_briefing"] = {
+                                            "session_id": data.get("session_id", session_file.stem),
+                                            "message_count": data.get("message_count", 0),
+                                            "preview": content[:500],
+                                        }
+                                        break
+                    if briefing["morning_briefing"]:
+                        break
+                except Exception:
+                    continue
+
+        # Get pending cron jobs (enabled + next_run is soon)
+        try:
+            crons = await self.get_cron_jobs()
+            now = datetime.now()
+            briefing["pending_crons"] = [
+                {"id": j.id, "name": j.name, "next_run": j.next_run, "schedule": j.schedule}
+                for j in crons
+                if j.enabled and j.next_run
+            ]
+        except Exception:
+            pass
+
+        return briefing
 
     # ── OpenAI-compatible API server (port 8642) ────────────────────────────────
 
@@ -269,8 +382,26 @@ class HermesAdaptor:
             )
             resp.raise_for_status()
             if stream:
-                return resp.aiter_lines()
+                # Use aiter_bytes() + manual decoding to avoid httpx's aiter_lines()
+                # buffering issue (it chunks reads, which can split SSE \n\n delimiters).
+                return self._stream_lines(resp)
             return resp.json()
+
+    async def _stream_lines(self, response):
+        """
+        Yield individual lines from a streaming HTTP response, properly handling
+        SSE delimiters across network chunk boundaries.
+
+        SSE events are separated by double newlines (\n\n).
+        Each event line starts with "data: ". The final event is "data: [DONE]".
+        """
+        buffer = b""
+        async for chunk in response.aiter_bytes(chunk_size=1):
+            buffer += chunk
+            while b"\n" in buffer:
+                line, buffer = buffer.split(b"\n", 1)
+                decoded = line.decode("utf-8", errors="replace")
+                yield decoded
 
     async def ask_stream(self, prompt: str):
         """Yield SSE chunks from the API server for a streaming response."""
