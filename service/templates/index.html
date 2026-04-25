@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mission Control</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0e17;
+      --surface: #111827;
+      --surface2: #1f2937;
+      --border: #374151;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --accent: #3b82f6;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+      --amber: #f59e0b;
+    }
+
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Top Bar ─────────────────────────────────────────── */
+    #topbar {
+      display: flex; align-items: center; gap: 16px;
+      padding: 10px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+    }
+    #topbar h1 { font-size: 1rem; font-weight: 700; letter-spacing: 0.05em; color: var(--accent); }
+    #topbar .spacer { flex: 1; }
+    #topbar .clock { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .dot-green  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot-red    { background: var(--red); }
+    .dot-yellow { background: var(--yellow); }
+    .dot-gray   { background: var(--muted); }
+
+    /* ── Main Grid ────────────────────────────────────────── */
+    #grid {
+      display: grid;
+      grid-template-columns: 280px 1fr 300px;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+      padding: 12px;
+      min-height: calc(100vh - 48px);
+    }
+
+    /* ── Panels ───────────────────────────────────────────── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted);
+    }
+    .panel-body { padding: 10px 12px; overflow-y: auto; flex: 1; }
+
+    /* ── Status Panel ─────────────────────────────────────── */
+    #status-panel .platform-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem;
+    }
+    #status-panel .platform-row:last-child { border-bottom: none; }
+    .platform-name { display: flex; align-items: center; gap: 6px; }
+    #gateway-info { font-size: 0.72rem; color: var(--muted); margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+    /* ── Activity Feed ────────────────────────────────────── */
+    #feed-panel { grid-row: 1 / 3; }
+    #feed-list { list-style: none; font-size: 0.75rem; }
+    #feed-list li {
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    #feed-list li:last-child { border-bottom: none; }
+    .feed-time { color: var(--muted); font-size: 0.68rem; }
+    .feed-msg  { color: var(--text); }
+    #feed-empty { color: var(--muted); font-size: 0.75rem; text-align: center; padding: 20px 0; }
+
+    /* ── Command Bar ──────────────────────────────────────── */
+    #cmd-panel { grid-column: 2; }
+    #cmd-input-wrap { display: flex; gap: 8px; }
+    #cmd-input {
+      flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      padding: 8px 12px; color: var(--text); font-size: 0.85rem; outline: none;
+    }
+    #cmd-input:focus { border-color: var(--accent); }
+    #cmd-submit {
+      background: var(--accent); border: none; border-radius: 6px;
+      color: white; padding: 0 16px; cursor: pointer; font-size: 0.8rem; font-weight: 600;
+    }
+    #cmd-submit:hover { opacity: 0.85; }
+    #cmd-response {
+      margin-top: 8px; font-size: 0.78rem; color: var(--muted);
+      min-height: 20px; word-break: break-word;
+    }
+    #cmd-response.error { color: var(--red); }
+
+    /* ── Hermes Brain ─────────────────────────────────────── */
+    #brain-panel { grid-column: 3; }
+    #brain-section { margin-bottom: 12px; }
+    #brain-section h3 { font-size: 0.7rem; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.08em; }
+    #brain-section p, #brain-section .val {
+      font-size: 0.78rem; color: var(--text); line-height: 1.5;
+    }
+    .brain-chip {
+      display: inline-block; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 4px; padding: 2px 7px; font-size: 0.7rem; margin: 2px;
+    }
+    #cron-list { font-size: 0.72rem; }
+    #cron-list .cron-item {
+      padding: 4px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;
+    }
+    #cron-list .cron-item:last-child { border-bottom: none; }
+    .cron-name { color: var(--text); }
+    .cron-next { color: var(--muted); font-size: 0.68rem; }
+    .cron-enabled { color: var(--green); }
+    .cron-disabled { color: var(--muted); }
+
+    /* ── Refresh ──────────────────────────────────────────── */
+    .refresh-btn {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+      color: var(--muted); padding: 2px 8px; font-size: 0.68rem; cursor: pointer; margin-left: auto;
+    }
+    .refresh-btn:hover { color: var(--text); border-color: var(--muted); }
+  </style>
+</head>
+<body>
+
+<!-- ── Top Bar ───────────────────────────────────────────────────────────── -->
+<div id="topbar">
+  <span>🚀</span>
+  <h1>MISSION CONTROL</h1>
+  <div class="spacer"></div>
+  <div id="connection-status">
+    <span class="status-dot dot-gray" id="conn-dot"></span>
+    <span id="conn-label" style="font-size:0.78rem;color:var(--muted)">Connecting...</span>
+  </div>
+  <div class="clock" id="clock"></div>
+</div>
+
+<!-- ── Main Grid ─────────────────────────────────────────────────────────── -->
+<div id="grid">
+
+  <!-- Status Panel -->
+  <div class="panel" id="status-panel">
+    <div class="panel-header">⚡ System Status</div>
+    <div class="panel-body">
+      <div id="gateway-info">Loading...</div>
+      <div id="platform-list">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Activity Feed -->
+  <div class="panel" id="feed-panel">
+    <div class="panel-header">
+      📡 Live Feed
+      <button class="refresh-btn" onclick="loadFeed()">Refresh</button>
+    </div>
+    <div class="panel-body">
+      <ul id="feed-list"><li id="feed-empty">No events yet...</li></ul>
+    </div>
+  </div>
+
+  <!-- Command Bar -->
+  <div class="panel" id="cmd-panel">
+    <div class="panel-header">⌘ Command Bar</div>
+    <div class="panel-body">
+      <div id="cmd-input-wrap">
+        <input id="cmd-input" type="text" placeholder="Ask Hermes anything..." autocomplete="off" />
+        <button id="cmd-submit" onclick="submitCmd()">Send</button>
+      </div>
+      <div id="cmd-response"></div>
+    </div>
+  </div>
+
+  <!-- Hermes Brain -->
+  <div class="panel" id="brain-panel">
+    <div class="panel-header">🧠 Hermes Brain</div>
+    <div class="panel-body">
+      <div id="brain-section">
+        <h3>Gateway</h3>
+        <p id="brain-gateway">Loading...</p>
+      </div>
+      <div id="brain-section">
+        <h3>Model</h3>
+        <p id="brain-model">—</p>
+      </div>
+      <div id="brain-section">
+        <h3>Platforms</h3>
+        <div id="brain-platforms"></div>
+      </div>
+      <div id="brain-section">
+        <h3>Cron Jobs</h3>
+        <div id="cron-list">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const API = '';
+  let eventSource;
+
+  function el(id) { return document.getElementById(id); }
+
+  function api(path) {
+    return fetch(API + path)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .catch(e => ({ ok: false, error: e.message }));
+  }
+
+  function setClock() {
+    const n = new Date();
+    el('clock').textContent = n.toLocaleTimeString('en-US', { hour12: false });
+  }
+  setInterval(setClock, 1000);
+  setClock();
+
+  // ── Connection ──────────────────────────────────────────────────────────────
+  function updateConnection(ok) {
+    const dot = el('conn-dot');
+    const label = el('conn-label');
+    if (ok) {
+      dot.className = 'status-dot dot-green';
+      label.textContent = 'Connected';
+    } else {
+      dot.className = 'status-dot dot-red';
+      label.textContent = 'Disconnected';
+    }
+  }
+
+  // ── Status Panel ───────────────────────────────────────────────────────────
+  function colorFor(state) {
+    if (state === 'connected' || state === 'running') return 'dot-green';
+    if (state === 'error' || state === 'disconnected') return 'dot-red';
+    return 'dot-yellow';
+  }
+
+  async function loadStatus() {
+    const d = await api('/api/status');
+    if (!d.ok) { updateConnection(false); return; }
+    updateConnection(true);
+    const s = d.data;
+
+    el('gateway-info').innerHTML =
+      `<b>v${s.version}</b> &nbsp;·&nbsp; PID ${s.gateway_pid} &nbsp;·&nbsp; ${s.gateway_state}`;
+
+    let html = '';
+    for (const [name, info] of Object.entries(s.platforms)) {
+      const color = colorFor(info.state);
+      const err = info.error ? ` <span style="color:var(--red);font-size:0.7rem">⚠ ${info.error}</span>` : '';
+      html += `<div class="platform-row">
+        <span class="platform-name"><span class="status-dot ${color}"></span>${name}</span>
+        <span style="color:var(--muted);font-size:0.72rem">${info.state}${err}</span>
+      </div>`;
+    }
+    el('platform-list').innerHTML = html;
+  }
+
+  // ── Activity Feed ──────────────────────────────────────────────────────────
+  const feedEvents = [];
+
+  function addFeed(type, msg) {
+    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+    feedEvents.unshift({ time, type, msg });
+    if (feedEvents.length > 50) feedEvents.pop();
+    renderFeed();
+  }
+
+  function renderFeed() {
+    if (feedEvents.length === 0) {
+      el('feed-list').innerHTML = '<li id="feed-empty">No events yet...</li>';
+      return;
+    }
+    el('feed-list').innerHTML = feedEvents.map(e =>
+      `<li><span class="feed-time">${e.time}</span><span class="feed-msg">[${e.type}] ${e.msg}</span></li>`
+    ).join('');
+  }
+
+  async function loadFeed() {
+    addFeed('system', 'Manual refresh');
+  }
+
+  // ── Command Bar ────────────────────────────────────────────────────────────
+  let cmdController;
+
+  async function submitCmd() {
+    const input = el('cmd-input');
+    const resp  = el('cmd-response');
+    const prompt = input.value.trim();
+    if (!prompt) return;
+
+    // Cancel any in-flight request
+    if (cmdController) cmdController.abort();
+    cmdController = new AbortController();
+
+    resp.textContent = '🤖 Thinking...';
+    resp.className = '';
+    addFeed('command', prompt.slice(0, 60));
+
+    try {
+      const res = await fetch(API + '/api/command', {
+        method: 'POST',
+        signal: cmdController.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+      const d = await res.json();
+      if (d.ok) {
+        const fullText = d.data.response;
+        // Progressive render: simulate streaming with a typing animation
+        resp.textContent = '';
+        let i = 0;
+        const speed = 12; // chars per frame (~20ms frame = 600ch/s, feels fast)
+        function typeChunk() {
+          if (i < fullText.length) {
+            resp.textContent += fullText.slice(i, i + speed);
+            i += speed;
+            setTimeout(typeChunk, 20);
+          } else {
+            resp.textContent = fullText;
+          }
+        }
+        typeChunk();
+        addFeed('hermes', fullText.slice(0, 80));
+        input.value = '';
+      } else {
+        resp.textContent = 'Error: ' + d.error;
+        resp.className = 'error';
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        resp.textContent = 'Error: ' + e.message;
+        resp.className = 'error';
+      }
+    }
+  }
+
+  el('cmd-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitCmd();
+  });
+
+  // ── Hermes Brain ───────────────────────────────────────────────────────────
+  async function loadBrain() {
+    const d = await api('/api/context');
+    if (!d.ok) return;
+    const ctx = d.data;
+    const st  = ctx.status;
+
+    el('brain-gateway').innerHTML =
+      `Gateway: <b>${st.gateway_state}</b> &nbsp; PID: <b>${st.gateway_pid}</b>`;
+
+    el('brain-model').textContent = `${st.model || '—'} (${st.model_provider || '—'})`;
+
+    // Platform chips
+    let chipHtml = '';
+    for (const [name, info] of Object.entries(st.platforms)) {
+      const color = info.state === 'connected' ? 'brain-chip' : 'brain-chip style="opacity:0.5"';
+      chipHtml += `<span class="${color}">${name}: ${info.state}</span>`;
+    }
+    el('brain-platforms').innerHTML = chipHtml;
+
+    // Cron jobs
+    const jobs = ctx.cron_jobs || [];
+    if (jobs.length === 0) {
+      el('cron-list').innerHTML = '<p style="font-size:0.72rem;color:var(--muted)">No cron jobs</p>';
+    } else {
+      el('cron-list').innerHTML = jobs.map(j => {
+        const errIcon = j.last_error ? '<span style="color:var(--red);font-size:0.65rem;margin-right:3px" title="' + j.last_error + '">⚠</span>' : '';
+        const statusColor = j.last_status === 'ok' ? 'var(--green)' : (j.last_status ? 'var(--red)' : 'var(--muted)');
+        return `<div class="cron-item">
+          <span class="cron-name ${j.enabled ? 'cron-enabled' : 'cron-disabled'}">${errIcon}${j.name}</span>
+          <span class="cron-next">${j.next_run ? j.next_run.slice(0,16).replace('T',' ') : '—'}</span>
+          <span style="font-size:0.62rem;color:${statusColor}" title="last run: ${j.last_status || '—'}">${j.last_status || '—'}</span>
+          <button class="cron-run-btn" onclick="triggerCron('${j.id}', this)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.7rem;padding:0 2px" title="Run now">▶</button>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // ── Cron Trigger ─────────────────────────────────────────────────────────────
+  async function triggerCron(jobId, btn) {
+    btn.textContent = '⏳';
+    btn.style.color = 'var(--yellow)';
+    try {
+      const res = await fetch(API + '/api/cron-jobs/' + encodeURIComponent(jobId) + '/trigger', { method: 'POST' });
+      const d = await res.json();
+      if (d.ok) {
+        btn.textContent = '✅';
+        setTimeout(() => { btn.textContent = '▶'; btn.style.color = 'var(--accent)'; }, 2000);
+        addFeed('cron', 'Triggered: ' + jobId);
+      } else {
+        btn.textContent = '❌';
+        setTimeout(() => { btn.textContent = '▶'; btn.style.color = 'var(--accent)'; }, 2000);
+      }
+    } catch (e) {
+      btn.textContent = '❌';
+      setTimeout(() => { btn.textContent = '▶'; btn.style.color = 'var(--accent)'; }, 2000);
+    }
+  }
+
+  // ── SSE ───────────────────────────────────────────────────────────────────
+  function connectSSE() {
+    if (eventSource) eventSource.close();
+    eventSource = new EventSource(API + '/events');
+    eventSource.addEventListener('ping', () => {});
+    eventSource.addEventListener('message', e => {
+      try {
+        const m = JSON.parse(e.data);
+        addFeed(m.type, JSON.stringify(m.data).slice(0, 80));
+      } catch {}
+    });
+    eventSource.addEventListener('error', () => {
+      updateConnection(false);
+      setTimeout(connectSSE, 5000);
+    });
+    eventSource.addEventListener('open', () => updateConnection(true));
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  async function boot() {
+    await loadStatus();
+    await loadBrain();
+    loadFeed();
+    connectSSE();
+    setInterval(loadStatus, 30000);
+    setInterval(loadBrain, 60000);
+  }
+
+  boot();
+</script>
+</body>
+</html>

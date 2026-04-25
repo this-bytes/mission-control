@@ -1,0 +1,40 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.so
+.Python
+
+# Environment
+.env
+.env.local
+
+# Local state (regenerates at runtime)
+adaptor/__pycache__/
+service/__pycache__/
+service/panels/__pycache__/
+
+# Secrets/tokens (config goes in git, secrets don't)
+# If you put real tokens in config/settings.json, remove this line
+config/settings.json
+
+# Systemd unit — installed system-wide, not repo
+# (we ship the template; the install script puts it in /etc/systemd/system)
+mission-control.service
+
+# macOS / Linux noise
+.DS_Store
+*.swp
+*.swo
+*~
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

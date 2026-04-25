@@ -1,0 +1,281 @@
+"""
+HermesAdaptor — connects Mission Control to the Hermes Agent API.
+
+Architecture (as of Hermes Agent v0.11+):
+- Gateway runs as user service (hermes-gateway.service)
+- OpenAI-compatible API server on port 8642 — chat completions, health checks
+- Gateway status available at GET /health/detailed on port 8642
+- Cron jobs stored in ~/.hermes/cron/jobs.json (local file, no auth needed)
+- ask() via POST /v1/chat/completions on port 8642
+
+Path resolution (in priority order):
+1. HERMES_HOME env var (allows repo to live anywhere)
+2. hermes_home in config/settings.json
+3. ~/.hermes (default)
+"""
+import httpx
+import json
+import os
+import subprocess
+from pathlib import Path
+from datetime import datetime
+from typing import Any, Optional
+
+from dataclasses import dataclass, asdict
+
+
+def _resolve_hermes_home() -> Path:
+    """Find Hermes home directory, in priority order."""
+    if hermes_home := os.environ.get("HERMES_HOME"):
+        return Path(hermes_home).expanduser()
+    # Fallback: try to load from config (will be Path if not yet loaded)
+    cfg_path = Path(__file__).parent.parent / "config" / "settings.json"
+    if cfg_path.exists():
+        try:
+            cfg = json.loads(cfg_path.read_text())
+            if hm := cfg.get("hermes_home"):
+                return Path(hm).expanduser()
+        except Exception:
+            pass
+    return Path.home() / ".hermes"
+
+
+@dataclass
+class PlatformStatus:
+    name: str
+    state: str  # connected, disconnected, error
+    error: Optional[str] = None
+    extra: Optional[dict] = None
+
+
+@dataclass
+class HermesStatus:
+    version: str
+    release_date: str
+    hermes_home: str
+    gateway_running: bool
+    gateway_pid: int
+    gateway_state: str
+    platforms: dict[str, PlatformStatus]
+    model: str
+    model_provider: str
+    checked_at: str
+
+
+@dataclass
+class CronJob:
+    id: str
+    name: str
+    prompt_preview: str
+    schedule: str
+    next_run: Optional[str]
+    enabled: bool
+    last_run: Optional[str] = None
+    last_status: Optional[str] = None
+    last_error: Optional[str] = None
+
+
+class HermesAdaptor:
+    """Talk to Hermes Agent via its OpenAI-compatible API server."""
+
+    def __init__(self, api_base: str = "http://127.0.0.1:8642"):
+        self.api_base = api_base.rstrip("/")
+        self._hermes_home = _resolve_hermes_home()
+        self._cron_file = self._hermes_home / "cron" / "jobs.json"
+
+    async def _get(self, path: str) -> dict:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(self.api_base + path)
+            resp.raise_for_status()
+            return resp.json()
+
+    # ── Status ──────────────────────────────────────────────────────────────────
+
+    async def get_status(self) -> HermesStatus:
+        """
+        Full Hermes gateway + platform status.
+        Source: GET /health/detailed on the OpenAI API server (port 8642).
+        """
+        data = await self._get("/health/detailed")
+        platforms = {}
+        for name, info in data.get("platforms", {}).items():
+            platforms[name] = PlatformStatus(
+                name=name,
+                state=info.get("state", "unknown"),
+                error=info.get("error_message"),
+                extra={k: v for k, v in info.items() if k not in ("state", "error_message")},
+            )
+
+        # model info is not in /health/detailed; leave blank — ask() works fine
+        return HermesStatus(
+            version="unknown",  # not exposed by /health/detailed
+            release_date="unknown",
+            hermes_home=str(self._hermes_home),
+            gateway_running=data.get("gateway_state") == "running",
+            gateway_pid=data.get("pid", 0),
+            gateway_state=data.get("gateway_state", "unknown"),
+            platforms=platforms,
+            model="MiniMax-M2.7",  # hardcoded from config.yaml — not exposed by API
+            model_provider="minimax",
+            checked_at=datetime.now().isoformat(),
+        )
+
+    # ── Cron Jobs ──────────────────────────────────────────────────────────────
+
+    async def get_cron_jobs(self) -> list[CronJob]:
+        """
+        List all scheduled cron jobs.
+        Source: ~/.hermes/cron/jobs.json (same machine, no auth needed).
+        """
+        if not self._cron_file.exists():
+            return []
+
+        data = json.loads(self._cron_file.read_text())
+        jobs = []
+        for j in data.get("jobs", []):
+            sched = j.get("schedule", {})
+            if isinstance(sched, dict):
+                schedule_expr = sched.get("expr", "unknown")
+            else:
+                schedule_expr = str(sched)
+
+            jobs.append(CronJob(
+                id=j.get("id", ""),
+                name=j.get("name", "unnamed"),
+                prompt_preview=j.get("prompt", "")[:120],
+                schedule=schedule_expr,
+                next_run=j.get("next_run_at"),
+                enabled=j.get("enabled", True),
+                last_run=j.get("last_run_at"),
+                last_status=j.get("last_status"),
+                last_error=j.get("last_error"),
+            ))
+        return jobs
+
+    async def trigger_cron_run(self, job_id: str) -> dict:
+        """Trigger an immediate cron job run via the hermes CLI."""
+        # Find the venv python in HERMES_HOME
+        venv_python = self._hermes_home / "hermes-agent" / "venv" / "bin" / "python"
+        if not venv_python.exists():
+            # Try system python
+            venv_python = self._hermes_home / "bin" / "python"
+        result = subprocess.run(
+            [str(venv_python), "-m", "hermes_cli.main", "cron", "run", job_id],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Cron run failed: {result.stderr.strip()}")
+        return {"ok": True, "job_id": job_id, "output": result.stdout.strip()}
+
+    # ── Toolsets / Skills ───────────────────────────────────────────────────────
+    # These endpoints don't exist on the current API server port.
+    # Returning empty lists — can be extended if Hermes adds these endpoints.
+
+    async def get_toolsets(self) -> list[dict]:
+        """List all available toolsets. (Not currently exposed by API server.)"""
+        return []
+
+    async def get_skills(self) -> list[dict]:
+        """List all skills. (Not currently exposed by API server.)"""
+        return []
+
+    async def get_model_info(self) -> dict:
+        """Model info — not exposed, return placeholder."""
+        return {"model": "MiniMax-M2.7", "provider": "minimax"}
+
+    async def get_hermes_version(self) -> dict:
+        """
+        Get Hermes version via CLI subprocess.
+        Caches result to avoid repeated subprocess calls.
+        """
+        import time
+        now = time.time()
+        if hasattr(self, '_version_cache') and (now - self._version_cache_time) < 300:
+            return self._version_cache
+        try:
+            # Find hermes binary — check HERMES_HOME/bin, then PATH
+            hermes_home_bin = self._hermes_home / "bin"
+            hermes_bin = None
+            for candidate in [hermes_home_bin / "hermes", Path("/usr/local/bin/hermes"),
+                               Path.home() / ".local" / "bin" / "hermes"]:
+                if candidate.exists():
+                    hermes_bin = str(candidate)
+                    break
+            if not hermes_bin:
+                raise FileNotFoundError("hermes binary not found")
+            result = subprocess.run(
+                [hermes_bin, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0:
+                # Parse "Hermes Agent v0.11.0 (2026.4.23)" — first line only
+                version_line = result.stdout.strip().split('\n')[0]
+                import re
+                # Format: "Hermes Agent vVERSION (DATE)" — date is inside ()
+                m = re.search(r'Hermes Agent v(.+?) \((.+?)\)', version_line)
+                if m:
+                    self._version_cache = {"version": m.group(1).strip(), "release_date": m.group(2).strip()}
+                else:
+                    self._version_cache = {"version": version_line, "release_date": "unknown"}
+            else:
+                self._version_cache = {"version": "unknown", "release_date": "unknown"}
+        except Exception:
+            self._version_cache = {"version": "unknown", "release_date": "unknown"}
+        self._version_cache_time = now
+        return self._version_cache
+
+    async def get_full_context(self) -> dict:
+        """Aggregate everything Hermes knows as a single context dump."""
+        try:
+            status = await self.get_status()
+        except Exception:
+            status = None
+        try:
+            crons = await self.get_cron_jobs()
+        except Exception:
+            crons = []
+        return {
+            "status": asdict(status) if status else {},
+            "cron_jobs": [asdict(j) for j in crons],
+            "toolsets": [],
+            "skills": [],
+            "model": {"model": "MiniMax-M2.7", "provider": "minimax"},
+        }
+
+    # ── OpenAI-compatible API server (port 8642) ────────────────────────────────
+
+    def _api_server_base(self) -> str:
+        """OpenAI-compatible API server base URL."""
+        return self.api_base
+
+    async def ask(self, prompt: str, stream: bool = False) -> dict:
+        """
+        Send a prompt to Hermes via the OpenAI-compatible API server.
+        Returns the full response dict. If stream=True, returns the chunks iterator.
+        """
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(
+                self._api_server_base() + "/v1/chat/completions",
+                json={
+                    "model": "hermes-agent",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "stream": stream,
+                },
+                headers={"Content-Type": "application/json"},
+            )
+            resp.raise_for_status()
+            if stream:
+                return resp.aiter_lines()
+            return resp.json()
+
+    async def ask_stream(self, prompt: str):
+        """Yield SSE chunks from the API server for a streaming response."""
+        async for line in await self.ask(prompt, stream=True):
+            if line.startswith("data: "):
+                yield line[6:]
+            elif line.strip() == "data: [DONE]":
+                break
