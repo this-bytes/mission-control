@@ -396,7 +396,7 @@ class HermesAdaptor:
         Each event line starts with "data: ". The final event is "data: [DONE]".
         """
         buffer = b""
-        async for chunk in response.aiter_bytes(chunk_size=1):
+        async for chunk in response.aiter_bytes(chunk_size=128):
             buffer += chunk
             while b"\n" in buffer:
                 line, buffer = buffer.split(b"\n", 1)
