@@ -122,6 +122,35 @@
     .session-name { color: var(--text); font-weight: 500; }
     .session-meta { color: var(--muted); font-size: 0.62rem; }
 
+    /* ── Cron Jobs Panel ────────────────────────────────── */
+    #crons-panel {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      max-height: 220px; overflow-y: auto;
+    }
+    #crons-list { font-size: 0.7rem; }
+    .cron-item {
+      padding: 5px 0; border-bottom: 1px solid rgba(55,65,81,0.5);
+      display: flex; align-items: flex-start; gap: 6px;
+    }
+    .cron-item:last-child { border-bottom: none; }
+    .cron-name { color: var(--text); font-weight: 500; flex: 1; min-width: 0; }
+    .cron-name.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cron-run-btn {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--accent); font-size: 0.6rem;
+      padding: 1px 6px; cursor: pointer; flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .cron-run-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+    .cron-schedule { font-size: 0.6rem; color: var(--muted); margin-top: 1px; }
+    .cron-last-run { font-size: 0.6rem; color: var(--muted); margin-top: 1px; }
+    .cron-status-ok { color: var(--green); }
+    .cron-status-err { color: var(--red); }
+    .cron-status-none { color: var(--muted); }
+    .cron-warn { color: var(--amber); font-size: 0.6rem; }
+
     /* ── Briefing Panel ─────────────────────────────────── */
     #briefing-panel {
       padding: 10px 14px;
@@ -394,6 +423,12 @@
       <div id="sessions-list">Loading...</div>
     </div>
 
+    <!-- Cron Jobs -->
+    <div id="crons-panel">
+      <div class="panel-label">⏰ Cron Jobs <span id="crons-count" style="font-weight:400;text-transform:none"></span></div>
+      <div id="crons-list">Loading...</div>
+    </div>
+
     <!-- Briefing -->
     <div id="briefing-panel">
       <div class="panel-label">🌅 Briefing</div>
@@ -496,8 +531,12 @@
   ══════════════════════════════════════════════════════════════ */
   const $ = id => document.getElementById(id);
 
-  function api(path) {
-    return fetch(API + path)
+  function api(path, method, body) {
+    return fetch(API + path, {
+      method: method || 'GET',
+      headers: body ? { 'Content-Type': 'application/json' } : {},
+      body: body ? JSON.stringify(body) : undefined,
+    })
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .catch(e => ({ ok: false, error: e.message }));
   }
@@ -575,6 +614,50 @@
         <div class="session-meta">${s.message_count || 0} msgs ${tokens} · ${updated}</div>
       </div>`;
     }).join('');
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     CRON JOBS
+  ══════════════════════════════════════════════════════════════ */
+  async function loadCrons() {
+    const d = await api('/api/cron-jobs');
+    const list = $('crons-list');
+    const count = $('crons-count');
+    if (!d.ok || !d.data || d.data.length === 0) {
+      list.innerHTML = '<p style="font-size:0.7rem;color:var(--muted)">No cron jobs</p>';
+      if (count) count.textContent = '';
+      return;
+    }
+    if (count) count.textContent = `(${d.data.length})`;
+    list.innerHTML = d.data.slice(0, 12).map(j => {
+      const statusClass = j.last_status === 'error' ? 'cron-status-err'
+        : j.last_status === 'ok' ? 'cron-status-ok'
+        : 'cron-status-none';
+      const statusLabel = j.last_status === 'error' ? '⚠️ error'
+        : j.last_status === 'ok' ? '✓ ok'
+        : '—';
+      const err = j.last_error ? `<div class="cron-warn">⚠ ${j.last_error.slice(0, 60)}</div>` : '';
+      const lastRun = j.last_run ? `Last: ${j.last_run.slice(0, 16)}` : 'Never run';
+      return `<div class="cron-item">
+        <div style="flex:1;min-width:0">
+          <div class="cron-name truncate" title="${j.name}">${j.name}</div>
+          <div class="cron-schedule">${j.schedule}</div>
+          <div class="cron-last-run"><span class="${statusClass}">${statusLabel}</span> · ${lastRun}</div>
+          ${err}
+        </div>
+        <button class="cron-run-btn" onclick="runCron('${j.id}', '${j.name.replace(/'/g, "\\'")}')" title="Run now">▶ Run</button>
+      </div>`;
+    }).join('');
+  }
+
+  async function runCron(jobId, jobName) {
+    addFeed('cron', `Triggering: ${jobName}`);
+    const d = await api(`/api/cron-jobs/${encodeURIComponent(jobId)}/trigger`, 'POST');
+    if (d && d.ok) {
+      addFeed('cron', `Started: ${jobName}`);
+    } else {
+      addFeed('error', `Failed to trigger ${jobName}: ${(d && d.error) || 'unknown'}`);
+    }
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -1114,6 +1197,7 @@
     await Promise.all([
       loadStatus(),
       loadSessions(),
+      loadCrons(),
       loadBriefing(),
       loadSkills(),
       loadSkillsForPalette(),
@@ -1123,6 +1207,7 @@
     addFeed('system', 'Mission Control online');
     setInterval(loadStatus, 30000);
     setInterval(loadSessions, 30000);
+    setInterval(loadCrons, 30000);
     setInterval(loadBriefing, 60000);
   }
 
