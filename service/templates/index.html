@@ -11,249 +11,490 @@
       --bg: #0a0e17;
       --surface: #111827;
       --surface2: #1f2937;
+      --surface3: #0d1117;
       --border: #374151;
       --text: #f9fafb;
       --muted: #9ca3af;
       --accent: #3b82f6;
+      --accent-dim: #1d4ed8;
       --green: #22c55e;
       --yellow: #eab308;
       --red: #ef4444;
       --amber: #f59e0b;
+      --purple: #a855f7;
+      --cyan: #06b6d4;
     }
 
-    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow: hidden;
+    }
 
     /* ── Top Bar ─────────────────────────────────────────── */
     #topbar {
       display: flex; align-items: center; gap: 16px;
-      padding: 10px 20px;
+      padding: 8px 20px;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       position: sticky; top: 0; z-index: 100;
+      height: 44px;
     }
-    #topbar h1 { font-size: 1rem; font-weight: 700; letter-spacing: 0.05em; color: var(--accent); }
+    #topbar h1 {
+      font-size: 0.85rem; font-weight: 700; letter-spacing: 0.12em;
+      color: var(--accent); text-transform: uppercase;
+    }
     #topbar .spacer { flex: 1; }
-    #topbar .clock { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+    #topbar .clock {
+      font-size: 0.8rem; color: var(--muted);
+      font-variant-numeric: tabular-nums; letter-spacing: 0.05em;
+    }
+    .kbd {
+      display: inline-block;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 0.7rem;
+      color: var(--muted);
+      font-family: monospace;
+    }
 
-    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-    .dot-green  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    /* ── Status dots ────────────────────────────────────── */
+    .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
+    .dot-green  { background: var(--green); box-shadow: 0 0 5px var(--green); }
     .dot-red    { background: var(--red); }
     .dot-yellow { background: var(--yellow); }
     .dot-gray   { background: var(--muted); }
 
-    /* ── Main Grid ────────────────────────────────────────── */
-    #grid {
+    /* ── Main Layout ────────────────────────────────────── */
+    #layout {
       display: grid;
-      grid-template-columns: 1fr 1fr 300px;
-      grid-template-rows: auto auto 1fr;
-      gap: 12px;
-      padding: 12px;
-      min-height: calc(100vh - 48px);
+      grid-template-columns: 260px 1fr 320px;
+      grid-template-rows: auto 1fr;
+      height: calc(100vh - 44px);
+      gap: 0;
     }
 
-    /* ── Panels ───────────────────────────────────────────── */
-    .panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+    /* ── Left Column ────────────────────────────────────── */
+    #left-col {
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
       overflow: hidden;
-      display: flex;
-      flex-direction: column;
     }
-    .panel-header {
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px 12px;
-      background: var(--surface2);
-      border-bottom: 1px solid var(--border);
-      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--muted);
-    }
-    .panel-body { padding: 10px 12px; overflow-y: auto; flex: 1; }
 
-    /* ── Status Panel ─────────────────────────────────────── */
-    #status-panel { grid-column: 1; grid-row: 1; }
-    #status-panel .platform-row {
+    /* ── Status Panel ────────────────────────────────────── */
+    #status-panel {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #gateway-info {
+      font-size: 0.7rem; color: var(--muted);
+      margin-bottom: 8px; padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .platform-row {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 6px 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.8rem;
+      padding: 4px 0; font-size: 0.75rem;
     }
-    #status-panel .platform-row:last-child { border-bottom: none; }
-    .platform-name { display: flex; align-items: center; gap: 6px; }
-    #gateway-info { font-size: 0.72rem; color: var(--muted); margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .platform-name { display: flex; align-items: center; gap: 5px; }
 
-    /* ── Sessions Panel ───────────────────────────────────── */
-    #sessions-panel { grid-column: 1; grid-row: 3; }
-    .session-item {
-      padding: 6px 0;
+    /* ── Sessions Panel ─────────────────────────────────── */
+    #sessions-panel {
+      padding: 10px 14px;
       border-bottom: 1px solid var(--border);
-      font-size: 0.75rem;
+      flex-shrink: 0;
+      max-height: 180px; overflow-y: auto;
+    }
+    .panel-label {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+    }
+    .session-item {
+      padding: 5px 0; border-bottom: 1px solid var(--border);
+      font-size: 0.72rem;
     }
     .session-item:last-child { border-bottom: none; }
-    .session-platform { color: var(--muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .session-platform { color: var(--muted); font-size: 0.62rem; text-transform: uppercase; }
     .session-name { color: var(--text); font-weight: 500; }
-    .session-meta { color: var(--muted); font-size: 0.68rem; }
+    .session-meta { color: var(--muted); font-size: 0.62rem; }
 
-    /* ── Activity Feed ────────────────────────────────────── */
-    #feed-panel { grid-column: 2; grid-row: 1; }
-    #feed-list { list-style: none; font-size: 0.75rem; }
-    #feed-list li {
-      padding: 5px 0;
+    /* ── Briefing Panel ─────────────────────────────────── */
+    #briefing-panel {
+      padding: 10px 14px;
       border-bottom: 1px solid var(--border);
-      display: flex; flex-direction: column; gap: 2px;
+      flex-shrink: 0;
+      max-height: 160px; overflow-y: auto;
     }
-    #feed-list li:last-child { border-bottom: none; }
-    .feed-time { color: var(--muted); font-size: 0.68rem; }
-    .feed-msg  { color: var(--text); }
-    #feed-empty { color: var(--muted); font-size: 0.75rem; text-align: center; padding: 20px 0; }
+    #briefing-text {
+      font-size: 0.72rem; color: var(--text); line-height: 1.5;
+    }
+    #briefing-meta { font-size: 0.62rem; color: var(--muted); margin-top: 4px; }
 
-    /* ── Command Bar ──────────────────────────────────────── */
-    #cmd-panel { grid-column: 1 / 3; grid-row: 2; }
-    #cmd-input-wrap { display: flex; gap: 8px; }
+    /* ── Command Input ──────────────────────────────────── */
+    #command-section {
+      padding: 10px 14px;
+      flex-shrink: 0;
+      background: var(--surface);
+    }
     #cmd-input {
-      flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
-      padding: 8px 12px; color: var(--text); font-size: 0.85rem; outline: none;
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 10px;
+      color: var(--text); font-size: 0.8rem; outline: none;
     }
     #cmd-input:focus { border-color: var(--accent); }
-    #cmd-submit {
-      background: var(--accent); border: none; border-radius: 6px;
-      color: white; padding: 0 16px; cursor: pointer; font-size: 0.8rem; font-weight: 600;
-    }
-    #cmd-submit:hover { opacity: 0.85; }
     #cmd-response {
-      margin-top: 8px; font-size: 0.78rem; color: var(--muted);
-      min-height: 20px; word-break: break-word;
+      margin-top: 6px; font-size: 0.72rem; color: var(--muted);
+      min-height: 16px; word-break: break-word; line-height: 1.4;
     }
     #cmd-response.error { color: var(--red); }
 
-    /* ── Hermes Brain ─────────────────────────────────────── */
-    #brain-panel { grid-column: 3; grid-row: 1 / 3; }
-    #brain-section { margin-bottom: 12px; }
-    #brain-section h3 { font-size: 0.7rem; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.08em; }
-    #brain-section p, #brain-section .val {
-      font-size: 0.78rem; color: var(--text); line-height: 1.5;
+    /* ── Center Column ───────────────────────────────────── */
+    #center-col {
+      display: flex; flex-direction: column;
+      overflow: hidden;
     }
-    .brain-chip {
-      display: inline-block; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 4px; padding: 2px 7px; font-size: 0.7rem; margin: 2px;
-    }
-    #cron-list { font-size: 0.72rem; }
-    #cron-list .cron-item {
-      padding: 4px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;
-    }
-    #cron-list .cron-item:last-child { border-bottom: none; }
-    .cron-name { color: var(--text); }
-    .cron-next { color: var(--muted); font-size: 0.68rem; }
-    .cron-enabled { color: var(--green); }
-    .cron-disabled { color: var(--muted); }
 
-    /* ── Refresh ──────────────────────────────────────────── */
-    .refresh-btn {
-      background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
-      color: var(--muted); padding: 2px 8px; font-size: 0.68rem; cursor: pointer; margin-left: auto;
+    /* ── Feed Panel ─────────────────────────────────────── */
+    #feed-panel {
+      flex: 1; overflow: hidden;
+      display: flex; flex-direction: column;
+      border-bottom: 1px solid var(--border);
     }
-    .refresh-btn:hover { color: var(--text); border-color: var(--muted); }
+    #feed-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 14px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted);
+      flex-shrink: 0;
+    }
+    #feed-list {
+      flex: 1; overflow-y: auto; padding: 6px 14px;
+      list-style: none; font-size: 0.72rem;
+    }
+    #feed-list li {
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(55,65,81,0.5);
+      display: flex; gap: 8px; align-items: baseline;
+    }
+    .feed-time { color: var(--muted); font-size: 0.65rem; min-width: 60px; }
+    .feed-type {
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; min-width: 50px;
+    }
+    .feed-type.cmd { color: var(--accent); }
+    .feed-type.hermes { color: var(--green); }
+    .feed-type.cron { color: var(--amber); }
+    .feed-type.system { color: var(--muted); }
+    .feed-type.error { color: var(--red); }
+    .feed-msg { color: var(--text); flex: 1; }
+    #feed-empty { color: var(--muted); font-size: 0.72rem; text-align: center; padding: 30px 0; }
+
+    /* ── Right Column ───────────────────────────────────── */
+    #right-col {
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Tab Bar ────────────────────────────────────────── */
+    #tab-bar {
+      display: flex;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .tab-btn {
+      flex: 1; padding: 8px 4px;
+      background: none; border: none;
+      color: var(--muted); font-size: 0.65rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      cursor: pointer; border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ── Tab Panels ─────────────────────────────────────── */
+    .tab-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+    .tab-panel.active { display: flex; }
+    .tab-panel-header {
+      padding: 8px 12px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.62rem; color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    /* ── Graph Panel ─────────────────────────────────────── */
+    #graph-panel canvas { flex: 1; }
+
+    /* ── Search Panel ────────────────────────────────────── */
+    #search-panel { flex-direction: column; }
+    #search-input-wrap {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      display: flex; gap: 6px;
+    }
+    #search-input {
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 4px; padding: 5px 8px;
+      color: var(--text); font-size: 0.75rem; outline: none;
+    }
+    #search-input:focus { border-color: var(--accent); }
+    #search-btn {
+      background: var(--accent); border: none; border-radius: 4px;
+      color: white; padding: 0 10px; cursor: pointer;
+      font-size: 0.7rem; font-weight: 600;
+    }
+    #search-results {
+      flex: 1; overflow-y: auto; padding: 8px 10px;
+    }
+    .search-result {
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.7rem;
+    }
+    .search-result:last-child { border-bottom: none; }
+    .search-result-header { display: flex; justify-content: space-between; margin-bottom: 2px; }
+    .search-source { color: var(--accent); font-size: 0.62rem; font-weight: 600; }
+    .search-role { color: var(--muted); font-size: 0.6rem; text-transform: uppercase; }
+    .search-content { color: var(--text); line-height: 1.4; }
+    .search-time { color: var(--muted); font-size: 0.6rem; margin-top: 2px; }
+    #search-empty { color: var(--muted); font-size: 0.72rem; text-align: center; padding: 20px 0; }
+
+    /* ── Skills Panel ───────────────────────────────────── */
+    #skills-panel { flex-direction: column; }
+    #skills-list {
+      flex: 1; overflow-y: auto; padding: 6px 10px;
+    }
+    .skill-item {
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .skill-item:hover { background: rgba(59,130,246,0.08); margin: 0 -10px; padding-left: 10px; padding-right: 10px; }
+    .skill-item:last-child { border-bottom: none; }
+    .skill-name { color: var(--text); font-size: 0.75rem; font-weight: 600; }
+    .skill-desc { color: var(--muted); font-size: 0.65rem; margin-top: 2px; line-height: 1.3; }
+    .skill-tags { margin-top: 3px; }
+    .skill-tag {
+      display: inline-block; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 3px; padding: 0 5px; font-size: 0.58rem; color: var(--muted);
+      margin-right: 3px;
+    }
+
+    /* ── Command Palette ─────────────────────────────────── */
+    #palette-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      display: none;
+      align-items: flex-start; justify-content: center;
+      padding-top: 80px;
+    }
+    #palette-overlay.open { display: flex; }
+    #palette {
+      width: 600px; max-width: 90vw;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+      overflow: hidden;
+    }
+    #palette-input-wrap {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    #palette-input-wrap .icon { font-size: 1.2rem; }
+    #palette-input {
+      flex: 1; background: none; border: none;
+      color: var(--text); font-size: 1rem; outline: none;
+    }
+    #palette-input::placeholder { color: var(--muted); }
+    #palette-hint { font-size: 0.7rem; color: var(--muted); }
+    #palette-results {
+      max-height: 400px; overflow-y: auto;
+    }
+    .palette-section-label {
+      padding: 6px 16px;
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted);
+      background: var(--surface2);
+      position: sticky; top: 0;
+    }
+    .palette-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; cursor: pointer;
+      border-bottom: 1px solid rgba(55,65,81,0.3);
+    }
+    .palette-item:hover, .palette-item.selected {
+      background: rgba(59,130,246,0.15);
+    }
+    .palette-item .icon { font-size: 1rem; width: 24px; text-align: center; }
+    .palette-item .label { font-size: 0.8rem; color: var(--text); }
+    .palette-item .sublabel { font-size: 0.65rem; color: var(--muted); }
+    .palette-item .shortcut { margin-left: auto; font-size: 0.65rem; color: var(--muted); }
+    #palette-footer {
+      padding: 8px 16px;
+      border-top: 1px solid var(--border);
+      display: flex; gap: 16px;
+      font-size: 0.62rem; color: var(--muted);
+    }
+    #palette-footer span { display: flex; align-items: center; gap: 4px; }
+
+    /* ── Utility ─────────────────────────────────────────── */
+    .mono { font-family: 'Cascadia Code', 'Fira Code', monospace; }
+    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .scroll-thin::-webkit-scrollbar { width: 4px; }
+    .scroll-thin::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
   </style>
 </head>
 <body>
 
-<!-- ── Top Bar ───────────────────────────────────────────────────────────── -->
+<!-- ── Top Bar ─────────────────────────────────────────────────────────────── -->
 <div id="topbar">
-  <span>🚀</span>
-  <h1>MISSION CONTROL</h1>
+  <span style="font-size:1rem">🚀</span>
+  <h1>Mission Control</h1>
   <div class="spacer"></div>
+  <button onclick="openPalette()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 10px;color:var(--muted);font-size:0.72rem;cursor:pointer;display:flex;align-items:center;gap:6px;">
+    <span>⚡</span> Command <span class="kbd">/</span>
+  </button>
   <div id="connection-status">
     <span class="status-dot dot-gray" id="conn-dot"></span>
-    <span id="conn-label" style="font-size:0.78rem;color:var(--muted)">Connecting...</span>
+    <span id="conn-label" style="font-size:0.72rem;color:var(--muted)">Connecting...</span>
   </div>
   <div class="clock" id="clock"></div>
 </div>
 
-<!-- ── Briefing Strip ───────────────────────────────────────────────────────── -->
-<div id="briefing-strip" style="display:none; margin: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
-  <div style="display:flex; align-items:center; gap:8px; padding: 8px 12px; background: var(--surface2); border-bottom: 1px solid var(--border); font-size:0.7rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted);">
-    🌅 Morning Briefing
-    <span id="briefing-time" style="margin-left:auto; color:var(--muted); font-weight:400; text-transform:none; letter-spacing:0;"></span>
+<!-- ── Layout ────────────────────────────────────────────────────────────── -->
+<div id="layout">
+
+  <!-- ── Left Column ───────────────────────────────────────── -->
+  <div id="left-col">
+
+    <!-- Status -->
+    <div id="status-panel">
+      <div class="panel-label">⚡ System</div>
+      <div id="gateway-info">Loading...</div>
+      <div id="platform-list"></div>
+    </div>
+
+    <!-- Sessions -->
+    <div id="sessions-panel">
+      <div class="panel-label">💬 Sessions</div>
+      <div id="sessions-list">Loading...</div>
+    </div>
+
+    <!-- Briefing -->
+    <div id="briefing-panel">
+      <div class="panel-label">🌅 Briefing</div>
+      <div id="briefing-text" style="font-size:0.72rem;color:var(--muted)">Loading...</div>
+      <div id="briefing-meta"></div>
+    </div>
+
+    <!-- Command -->
+    <div id="command-section">
+      <input id="cmd-input" type="text" placeholder="Ask Hermes anything..." autocomplete="off" />
+      <div id="cmd-response"></div>
+    </div>
+
   </div>
-  <div id="briefing-content" style="padding: 10px 12px; font-size:0.78rem; color:var(--text); line-height:1.6; max-height:120px; overflow-y:auto;">
-    Loading briefing...
+
+  <!-- ── Center Column ─────────────────────────────────────── -->
+  <div id="center-col">
+
+    <!-- Feed -->
+    <div id="feed-panel">
+      <div id="feed-header">
+        📡 Live Feed
+        <span style="margin-left:auto;font-size:0.62rem;font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">30s refresh</span>
+      </div>
+      <ul id="feed-list"><li id="feed-empty">No events yet...</li></ul>
+    </div>
+
+  </div>
+
+  <!-- ── Right Column ─────────────────────────────────────── -->
+  <div id="right-col">
+
+    <!-- Tab Bar -->
+    <div id="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('graph')" id="tab-graph">🧠 Graph</button>
+      <button class="tab-btn" onclick="switchTab('search')" id="tab-search">🔍 Search</button>
+      <button class="tab-btn" onclick="switchTab('skills')" id="tab-skills">⚡ Skills</button>
+    </div>
+
+    <!-- Graph Panel -->
+    <div class="tab-panel active" id="panel-graph">
+      <div class="tab-panel-header">Entity Knowledge Graph — click nodes to see what Hermes knows</div>
+      <canvas id="graph-canvas" style="flex:1;cursor:grab;"></canvas>
+      <div id="graph-detail" style="padding:8px 12px;border-top:1px solid var(--border);font-size:0.7rem;min-height:60px;background:var(--surface);color:var(--muted);line-height:1.4;">
+        Click any node to explore connections
+      </div>
+    </div>
+
+    <!-- Search Panel -->
+    <div class="tab-panel" id="panel-search">
+      <div id="search-input-wrap">
+        <input id="search-input" type="text" placeholder="Search conversation history..." onkeydown="if(event.key==='Enter')doSearch()" />
+        <button id="search-btn" onclick="doSearch()">Search</button>
+      </div>
+      <div id="search-results">
+        <div id="search-empty">Type a query above to search your conversation history</div>
+      </div>
+    </div>
+
+    <!-- Skills Panel -->
+    <div class="tab-panel" id="panel-skills">
+      <div class="tab-panel-header">Available skills — click to invoke</div>
+      <div id="skills-list">Loading...</div>
+    </div>
+
   </div>
 </div>
 
-<!-- ── Main Grid ─────────────────────────────────────────────────────────── -->
-<div id="grid">
-
-  <!-- Status Panel -->
-  <div class="panel" id="status-panel">
-    <div class="panel-header">⚡ System Status</div>
-    <div class="panel-body">
-      <div id="gateway-info">Loading...</div>
-      <div id="platform-list">Loading...</div>
+<!-- ── Command Palette ──────────────────────────────────────────────────────── -->
+<div id="palette-overlay" onclick="if(event.target===this)closePalette()">
+  <div id="palette">
+    <div id="palette-input-wrap">
+      <span class="icon">⚡</span>
+      <input id="palette-input" type="text" placeholder="Search skills, actions, history..." autocomplete="off" oninput="filterPalette()" onkeydown="if(event.key==='Escape')closePalette();else if(event.key==='Enter')executeSelected()" />
+      <span id="palette-hint" class="kbd">ESC</span>
+    </div>
+    <div id="palette-results"></div>
+    <div id="palette-footer">
+      <span><span class="kbd">↑↓</span> navigate</span>
+      <span><span class="kbd">↵</span> execute</span>
+      <span><span class="kbd">ESC</span> close</span>
     </div>
   </div>
-
-  <!-- Sessions Panel -->
-  <div class="panel" id="sessions-panel">
-    <div class="panel-header">💬 Active Sessions</div>
-    <div class="panel-body">
-      <div id="sessions-list">Loading...</div>
-    </div>
-  </div>
-
-  <!-- Activity Feed -->
-  <div class="panel" id="feed-panel">
-    <div class="panel-header">
-      📡 Live Feed
-      <button class="refresh-btn" onclick="loadFeed()">Refresh</button>
-    </div>
-    <div class="panel-body">
-      <ul id="feed-list"><li id="feed-empty">No events yet...</li></ul>
-    </div>
-  </div>
-
-  <!-- Command Bar -->
-  <div class="panel" id="cmd-panel">
-    <div class="panel-header">⌘ Command Bar</div>
-    <div class="panel-body">
-      <div id="cmd-input-wrap">
-        <input id="cmd-input" type="text" placeholder="Ask Hermes anything..." autocomplete="off" />
-        <button id="cmd-submit" onclick="submitCmd()">Send</button>
-      </div>
-      <div id="cmd-response"></div>
-    </div>
-  </div>
-
-  <!-- Hermes Brain -->
-  <div class="panel" id="brain-panel">
-    <div class="panel-header">🧠 Hermes Brain</div>
-    <div class="panel-body">
-      <div id="brain-section">
-        <h3>Gateway</h3>
-        <p id="brain-gateway">Loading...</p>
-      </div>
-      <div id="brain-section">
-        <h3>Model</h3>
-        <p id="brain-model">—</p>
-      </div>
-      <div id="brain-section">
-        <h3>Platforms</h3>
-        <div id="brain-platforms"></div>
-      </div>
-      <div id="brain-section">
-        <h3>Cron Jobs</h3>
-        <div id="cron-list">Loading...</div>
-      </div>
-    </div>
-  </div>
-
 </div>
 
 <script>
-  // ── Helpers ────────────────────────────────────────────────────────────────
+  /* ══════════════════════════════════════════════════════════════
+     STATE
+  ══════════════════════════════════════════════════════════════ */
   const API = '';
   let eventSource;
+  let _cmdController = null;
+  let _graphData = null;
+  let _selectedPaletteIdx = 0;
+  let _paletteItems = [];
+  let _searchCache = {};
 
-  function el(id) { return document.getElementById(id); }
+  /* ══════════════════════════════════════════════════════════════
+     HELPERS
+  ══════════════════════════════════════════════════════════════ */
+  const $ = id => document.getElementById(id);
 
   function api(path) {
     return fetch(API + path)
@@ -261,17 +502,16 @@
       .catch(e => ({ ok: false, error: e.message }));
   }
 
+  /* ── Clock ─────────────────────────────────────────────── */
   function setClock() {
-    const n = new Date();
-    el('clock').textContent = n.toLocaleTimeString('en-US', { hour12: false });
+    $('clock').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
   }
-  setInterval(setClock, 1000);
-  setClock();
+  setInterval(setClock, 1000); setClock();
 
-  // ── Connection ──────────────────────────────────────────────────────────────
+  /* ── Connection ────────────────────────────────────────── */
   function updateConnection(ok) {
-    const dot = el('conn-dot');
-    const label = el('conn-label');
+    const dot = $('conn-dot');
+    const label = $('conn-label');
     if (ok) {
       dot.className = 'status-dot dot-green';
       label.textContent = 'Connected';
@@ -281,7 +521,17 @@
     }
   }
 
-  // ── Status Panel ───────────────────────────────────────────────────────────
+  /* ── Tabs ─────────────────────────────────────────────── */
+  function switchTab(name) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    $(`tab-${name}`).classList.add('active');
+    $(`panel-${name}`).classList.add('active');
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     SYSTEM STATUS
+  ══════════════════════════════════════════════════════════════ */
   function colorFor(state) {
     if (state === 'connected' || state === 'running') return 'dot-green';
     if (state === 'error' || state === 'disconnected') return 'dot-red';
@@ -293,113 +543,121 @@
     if (!d.ok) { updateConnection(false); return; }
     updateConnection(true);
     const s = d.data;
-
-    el('gateway-info').innerHTML =
-      `<b>v${s.version}</b> &nbsp;·&nbsp; PID ${s.gateway_pid} &nbsp;·&nbsp; ${s.gateway_state}`;
-
+    $('gateway-info').innerHTML = `<b>v${s.version}</b> · PID ${s.gateway_pid} · ${s.gateway_state}`;
     let html = '';
     for (const [name, info] of Object.entries(s.platforms)) {
-      const color = colorFor(info.state);
-      const err = info.error ? ` <span style="color:var(--red);font-size:0.7rem">⚠ ${info.error}</span>` : '';
+      const err = info.error ? ` <span style="color:var(--red);font-size:0.65rem">⚠</span>` : '';
       html += `<div class="platform-row">
-        <span class="platform-name"><span class="status-dot ${color}"></span>${name}</span>
-        <span style="color:var(--muted);font-size:0.72rem">${info.state}${err}</span>
+        <span class="platform-name"><span class="status-dot ${colorFor(info.state)}"></span>${name}</span>
+        <span style="color:var(--muted);font-size:0.7rem">${info.state}${err}</span>
       </div>`;
     }
-    el('platform-list').innerHTML = html;
+    $('platform-list').innerHTML = html;
   }
 
-  // ── Activity Feed ──────────────────────────────────────────────────────────
-  const feedEvents = [];
-
-  function addFeed(type, msg) {
-    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
-    feedEvents.unshift({ time, type, msg });
-    if (feedEvents.length > 50) feedEvents.pop();
-    renderFeed();
-  }
-
-  function renderFeed() {
-    if (feedEvents.length === 0) {
-      el('feed-list').innerHTML = '<li id="feed-empty">No events yet...</li>';
+  /* ══════════════════════════════════════════════════════════════
+     SESSIONS
+  ══════════════════════════════════════════════════════════════ */
+  async function loadSessions() {
+    const d = await api('/api/sessions');
+    const list = $('sessions-list');
+    if (!d.ok || !d.data || d.data.length === 0) {
+      list.innerHTML = '<p style="font-size:0.7rem;color:var(--muted)">No sessions</p>';
       return;
     }
-    el('feed-list').innerHTML = feedEvents.map(e =>
-      `<li><span class="feed-time">${e.time}</span><span class="feed-msg">[${e.type}] ${e.msg}</span></li>`
-    ).join('');
+    list.innerHTML = d.data.slice(0, 6).map(s => {
+      const icon = s.platform === 'discord' ? '💬' : s.platform === 'telegram' ? '✈️' : '🔌';
+      const updated = s.updated_at ? s.updated_at.slice(0, 16).replace('T', ' ') : '—';
+      const tokens = s.total_tokens ? `· ${Math.round(s.total_tokens/100)/10}k tok` : '';
+      return `<div class="session-item">
+        <div class="session-platform">${icon} ${s.platform}</div>
+        <div class="session-name">${s.display_name || s.key || '—'}</div>
+        <div class="session-meta">${s.message_count || 0} msgs ${tokens} · ${updated}</div>
+      </div>`;
+    }).join('');
   }
 
-  async function loadFeed() {
-    addFeed('system', 'Manual refresh');
+  /* ══════════════════════════════════════════════════════════════
+     BRIEFING
+  ══════════════════════════════════════════════════════════════ */
+  async function loadBriefing() {
+    const d = await api('/api/briefing');
+    const text = $('briefing-text');
+    const meta = $('briefing-meta');
+    if (!d.ok || !d.data) {
+      text.textContent = 'No briefing available';
+      return;
+    }
+    const b = d.data;
+    const mb = b.morning_briefing;
+    const crons = b.pending_crons || [];
+    if (mb && mb.preview) {
+      text.textContent = mb.preview.slice(0, 300) + (mb.preview.length > 300 ? '…' : '');
+      const sid = mb.session_id || '';
+      const dp = sid.match(/(\d{8})_(\d{6})/);
+      if (dp) {
+        const [dStr, tStr] = [dp[1], dp[2]];
+        meta.textContent = `Generated ${dStr.slice(0,4)}-${dStr.slice(4,6)}-${dStr.slice(6,8)} ${tStr.slice(0,2)}:${tStr.slice(2,4)} UTC · ${crons.length} crons pending`;
+      }
+    } else if (crons.length) {
+      text.innerHTML = 'Upcoming: ' + crons.slice(0, 3).map(c => `<span style="color:var(--accent)">${c.name}</span>`).join(' · ');
+      meta.textContent = `${crons.length} cron jobs pending`;
+    } else {
+      text.textContent = 'No briefing or pending crons';
+    }
   }
 
-  // ── Command Bar ────────────────────────────────────────────────────────────
-  let cmdController;
+  /* ══════════════════════════════════════════════════════════════
+     COMMAND BAR
+  ══════════════════════════════════════════════════════════════ */
+  $('cmd-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitCmd();
+  });
 
   async function submitCmd() {
-    const input = el('cmd-input');
-    const resp  = el('cmd-response');
+    const input = $('cmd-input');
+    const resp = $('cmd-response');
     const prompt = input.value.trim();
     if (!prompt) return;
-
-    // Cancel any in-flight request
-    if (cmdController) cmdController.abort();
-    cmdController = new AbortController();
-
-    resp.textContent = '🤖 Thinking...';
+    if (_cmdController) _cmdController.abort();
+    _cmdController = new AbortController();
+    resp.textContent = '🤖 Thinking…';
     resp.className = '';
-    addFeed('command', prompt.slice(0, 60));
-
+    addFeed('cmd', prompt.slice(0, 70));
     try {
       const res = await fetch(API + '/api/command/stream', {
-        method: 'POST',
-        signal: cmdController.signal,
+        method: 'POST', signal: _cmdController.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
       });
-
       if (!res.ok) {
         const d = await res.json();
         resp.textContent = 'Error: ' + (d.error || res.status);
         resp.className = 'error';
         return;
       }
-
-      // Real streaming: read tokens from SSE body as they arrive
       resp.textContent = '';
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let_in_progress = false;
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          // SSE lines: "event: token\ndata: <token>\n\n" or "event: done\ndata: \n\n"
-          const lines = chunk.split('\n');
-          for (const line of lines) {
-            if (line.startsWith('event: ')) {
-              _cmdEventType = line.slice(7).trim();
-            } else if (line.startsWith('data: ')) {
-              const payload = line.slice(6).trim();
-              if (_cmdEventType === 'token' && payload) {
-                resp.textContent += payload;
-              } else if (_cmdEventType === 'done') {
-                addFeed('hermes', resp.textContent.slice(0, 80));
-                input.value = '';
-                _cmdEventType = null;
-              } else if (_cmdEventType === 'error' && payload) {
-                resp.textContent = 'Error: ' + payload;
-                resp.className = 'error';
-              }
+      let evtType = null;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split('\n')) {
+          if (line.startsWith('event: ')) evtType = line.slice(7).trim();
+          else if (line.startsWith('data: ')) {
+            const payload = line.slice(6).trim();
+            if (evtType === 'token' && payload) resp.textContent += payload;
+            else if (evtType === 'done') {
+              addFeed('hermes', resp.textContent.slice(0, 80));
+              input.value = '';
+              evtType = null;
+            } else if (evtType === 'error' && payload) {
+              resp.textContent = 'Error: ' + payload;
+              resp.className = 'error';
             }
           }
-        }
-      } catch (e) {
-        if (e.name !== 'AbortError') {
-          resp.textContent = 'Error: stream interrupted';
-          resp.className = 'error';
         }
       }
     } catch (e) {
@@ -410,126 +668,414 @@
     }
   }
 
-  let _cmdEventType = null;
+  /* ══════════════════════════════════════════════════════════════
+     LIVE FEED
+  ══════════════════════════════════════════════════════════════ */
+  const feedEvents = [];
+  function addFeed(type, msg) {
+    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+    feedEvents.unshift({ time, type, msg });
+    if (feedEvents.length > 80) feedEvents.pop();
+    renderFeed();
+  }
+  function renderFeed() {
+    if (feedEvents.length === 0) {
+      $('feed-list').innerHTML = '<li id="feed-empty">No events yet...</li>';
+      return;
+    }
+    $('feed-list').innerHTML = feedEvents.slice(0, 50).map(e =>
+      `<li>
+        <span class="feed-time">${e.time}</span>
+        <span class="feed-type ${e.type}">${e.type}</span>
+        <span class="feed-msg">${e.msg}</span>
+      </li>`
+    ).join('');
+  }
 
-  el('cmd-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') submitCmd();
-  });
+  /* ══════════════════════════════════════════════════════════════
+     KNOWLEDGE GRAPH
+  ══════════════════════════════════════════════════════════════ */
+  const canvas = $('graph-canvas');
+  const ctx = canvas.getContext('2d');
 
-  // ── Morning Briefing ────────────────────────────────────────────────────────
-  async function loadBriefing() {
-    const strip = el('briefing-strip');
-    const content = el('briefing-content');
-    const time = el('briefing-time');
-    const d = await api('/api/briefing');
-    if (!d.ok || !d.data) return;
+  // Force-directed layout in JS
+  class Graph {
+    constructor(nodes, edges) {
+      this.nodes = nodes.map((n, i) => ({
+        ...n,
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: 0, vy: 0,
+        label: n.name.length > 20 ? n.name.slice(0, 18) + '…' : n.name,
+      }));
+      this.edges = edges.map(e => ({
+        ...e,
+        source: this.nodes.find(n => n.id === e.source) || this.nodes[0],
+        target: this.nodes.find(n => n.id === e.target) || this.nodes[0],
+      }));
+    }
 
-    const b = d.data;
-    const mb = b.morning_briefing;
-    const crons = b.pending_crons || [];
-
-    if (mb && mb.preview) {
-      strip.style.display = 'block';
-      content.textContent = mb.preview.slice(0, 400) + (mb.preview.length > 400 ? '…' : '');
-      // Show when this briefing was generated
-      const sessionId = mb.session_id || '';
-      const datePart = sessionId.match(/(\d{8})_(\d{6})/);
-      if (datePart) {
-        const dStr = datePart[1], tStr = datePart[2];
-        time.textContent = `${dStr.slice(0,4)}-${dStr.slice(4,6)}-${dStr.slice(6,8)} ${tStr.slice(0,2)}:${tStr.slice(2,4)} UTC`;
-      } else {
-        time.textContent = '';
+    tick() {
+      // Repulsion between all nodes
+      for (let i = 0; i < this.nodes.length; i++) {
+        for (let j = i + 1; j < this.nodes.length; j++) {
+          const a = this.nodes[i], b = this.nodes[j];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+          const force = 3000 / (dist * dist);
+          const fx = dx / dist * force, fy = dy / dist * force;
+          a.vx -= fx; a.vy -= fy;
+          b.vx += fx; b.vy += fy;
+        }
       }
-    } else {
-      // Still show pending crons strip even without briefing
-      if (crons.length > 0) {
-        strip.style.display = 'block';
-        const next = crons.slice(0, 3);
-        content.innerHTML = '<span style="color:var(--muted);font-size:0.72rem">Upcoming: </span>'
-          + next.map(c => `<span style="color:var(--accent)">${c.name}</span>`).join(' · ');
-        time.textContent = '';
+      // Attraction along edges
+      for (const e of this.edges) {
+        const dx = e.target.x - e.source.x, dy = e.target.y - e.source.y;
+        const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+        const force = (dist - 100) * 0.05;
+        const fx = dx / dist * force, fy = dy / dist * force;
+        e.source.vx += fx; e.source.vy += fy;
+        e.target.vx -= fx; e.target.vy -= fy;
+      }
+      // Center gravity + velocity damping
+      for (const n of this.nodes) {
+        n.vx += (canvas.width / 2 - n.x) * 0.001;
+        n.vy += (canvas.height / 2 - n.y) * 0.001;
+        n.vx *= 0.85; n.vy *= 0.85;
+        n.x += n.vx; n.y += n.vy;
+        n.x = Math.max(20, Math.min(canvas.width - 20, n.x));
+        n.y = Math.max(20, Math.min(canvas.height - 20, n.y));
+      }
+    }
+
+    draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Edges
+      for (const e of this.edges) {
+        ctx.beginPath();
+        ctx.moveTo(e.source.x, e.source.y);
+        ctx.lineTo(e.target.x, e.target.y);
+        ctx.strokeStyle = 'rgba(59,130,246,0.25)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      // Nodes
+      for (const n of this.nodes) {
+        const isHovered = n === _hoveredNode;
+        const r = isHovered ? 9 : 6;
+        const hue = hashColor(n.name);
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = isHovered ? `hsl(${hue},80%,60%)` : `hsl(${hue},60%,45%)`;
+        ctx.fill();
+        ctx.strokeStyle = isHovered ? '#fff' : `hsl(${hue},60%,65%)`;
+        ctx.lineWidth = isHovered ? 2 : 1;
+        ctx.stroke();
+        // Label
+        ctx.fillStyle = isHovered ? '#fff' : 'rgba(156,163,175,0.9)';
+        ctx.font = `${isHovered ? 'bold ' : ''}${isHovered ? 11 : 9}px Segoe UI, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(n.label, n.x, n.y + r + 12);
       }
     }
   }
 
-  // ── Sessions ────────────────────────────────────────────────────────────────
-  async function loadSessions() {
-    const list = el('sessions-list');
-    const d = await api('/api/sessions');
+  let _graph = null;
+  let _hoveredNode = null;
+  let _selectedNode = null;
+  let _animating = false;
+  let _nodePositions = {}; // stable positions
+
+  function hashColor(s) {
+    let h = 0;
+    for (const c of s) h = ((h << 5) - h) + c.charCodeAt(0);
+    return Math.abs(h) % 360;
+  }
+
+  function resizeCanvas() {
+    const panel = $('panel-graph');
+    canvas.width = panel.clientWidth;
+    canvas.height = panel.clientHeight - 32; // header
+  }
+
+  async function loadGraph() {
+    const d = await api('/api/graph');
+    if (!d.ok || !d.data) return;
+    const { nodes, edges } = d.data;
+    if (!nodes || !nodes.length) return;
+
+    // Preserve old positions if reloading
+    if (_graph) {
+      for (const n of nodes) {
+        if (_nodePositions[n.id]) {
+          n._x = _nodePositions[n.id].x;
+          n._y = _nodePositions[n.id].y;
+        }
+      }
+    }
+
+    _graphData = d.data;
+    _graph = new Graph(nodes, edges);
+
+    // Restore positions
+    if (_nodePositions) {
+      for (const n of _graph.nodes) {
+        if (_nodePositions[n.id]) {
+          n.x = _nodePositions[n.id].x;
+          n.y = _nodePositions[n.id].y;
+        }
+      }
+    }
+
+    resizeCanvas();
+    animateGraph();
+  }
+
+  function animateGraph() {
+    if (!_graph) return;
+    _animating = true;
+    function frame() {
+      if (!_graph) return;
+      for (let i = 0; i < 5; i++) _graph.tick();
+      _graph.draw();
+      if (_animating) requestAnimationFrame(frame);
+    }
+    frame();
+  }
+
+  // Mouse interaction
+  canvas.addEventListener('mousemove', e => {
+    if (!_graph) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    _hoveredNode = null;
+    for (const n of _graph.nodes) {
+      const dx = n.x - mx, dy = n.y - my;
+      if (dx*dx + dy*dy < 100) { _hoveredNode = n; break; }
+    }
+    canvas.style.cursor = _hoveredNode ? 'pointer' : 'grab';
+  });
+
+  canvas.addEventListener('click', e => {
+    if (!_graph || !_hoveredNode) return;
+    _selectedNode = _hoveredNode;
+    showNodeDetail(_selectedNode);
+  });
+
+  function showNodeDetail(node) {
+    // Find all edges involving this node
+    const related = _graphData.edges.filter(e =>
+      e.source === node.id || e.target === node.id
+    );
+    const detail = $('graph-detail');
+    let html = `<div style="color:var(--accent);font-weight:700;margin-bottom:6px">${node.name}</div>`;
+    html += `<div style="color:var(--muted);font-size:0.62rem;margin-bottom:6px">type: ${node.type || 'concept'} · ${related.length} connections</div>`;
+    for (const edge of related.slice(0, 5)) {
+      const other = edge.source === node.id ? edge.target : edge.source;
+      const otherNode = _graph.nodes.find(n => n.id === other);
+      const label = otherNode ? otherNode.name : other;
+      html += `<div style="font-size:0.65rem;margin-top:3px">
+        <span style="color:var(--amber)">${edge.label || '→'}</span>
+        <span style="color:var(--text)">${label}</span>
+        ${edge.fact_preview ? `<div style="color:var(--muted);font-size:0.6rem;margin-top:1px">${edge.fact_preview.slice(0,80)}…</div>` : ''}
+      </div>`;
+    }
+    detail.innerHTML = html;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     HISTORY SEARCH
+  ══════════════════════════════════════════════════════════════ */
+  async function doSearch() {
+    const q = $('search-input').value.trim();
+    const results = $('search-results');
+    const empty = $('search-empty');
+    if (!q) { results.innerHTML = ''; results.appendChild(empty); return; }
+    results.innerHTML = '<div style="font-size:0.72rem;color:var(--muted);padding:10px 0">Searching…</div>';
+    const d = await api(`/api/history/search?q=${encodeURIComponent(q)}&limit=20`);
     if (!d.ok || !d.data || d.data.length === 0) {
-      list.innerHTML = '<p style="font-size:0.72rem;color:var(--muted)">No active sessions</p>';
+      results.innerHTML = `<div id="search-empty">No results for "${q}"</div>`;
       return;
     }
-    list.innerHTML = d.data.map(s => {
-      const platformIcon = s.platform === 'discord' ? '💬' : s.platform === 'telegram' ? '✈️' : '🔌';
-      const updated = s.updated_at ? s.updated_at.slice(0, 16).replace('T', ' ') : '—';
-      const tokens = s.total_tokens ? `· ${Math.round(s.total_tokens / 100) / 10}k tok` : '';
-      return `<div class="session-item">
-        <div class="session-platform">${platformIcon} ${s.platform}</div>
-        <div class="session-name">${s.display_name || s.key}</div>
-        <div class="session-meta">${s.message_count} msgs ${tokens} · ${updated}</div>
+    results.innerHTML = d.data.map(r => {
+      const ts = r.timestamp ? new Date(r.timestamp * 1000).toLocaleString('en-AU', { hour12: false }) : '';
+      return `<div class="search-result">
+        <div class="search-result-header">
+          <span class="search-source">${r.source || 'unknown'}</span>
+          <span class="search-role">${r.role}</span>
+        </div>
+        <div class="search-content">${r.content || '—'}</div>
+        <div class="search-time">${ts}</div>
       </div>`;
     }).join('');
   }
-  async function loadBrain() {
-    const d = await api('/api/context');
-    if (!d.ok) return;
-    const ctx = d.data;
-    const st  = ctx.status;
 
-    el('brain-gateway').innerHTML =
-      `Gateway: <b>${st.gateway_state}</b> &nbsp; PID: <b>${st.gateway_pid}</b>`;
-
-    el('brain-model').textContent = `${st.model || '—'} (${st.model_provider || '—'})`;
-
-    // Platform chips
-    let chipHtml = '';
-    for (const [name, info] of Object.entries(st.platforms)) {
-      const color = info.state === 'connected' ? 'brain-chip' : 'brain-chip style="opacity:0.5"';
-      chipHtml += `<span class="${color}">${name}: ${info.state}</span>`;
+  /* ══════════════════════════════════════════════════════════════
+     SKILLS CATALOG
+  ══════════════════════════════════════════════════════════════ */
+  async function loadSkills() {
+    const d = await api('/api/skills-catalog');
+    const list = $('skills-list');
+    if (!d.ok || !d.data || d.data.length === 0) {
+      list.innerHTML = '<p style="font-size:0.72rem;color:var(--muted)">No skills found</p>';
+      return;
     }
-    el('brain-platforms').innerHTML = chipHtml;
+    list.innerHTML = d.data.map(s => {
+      const tags = s.tags ? s.tags.replace(/[\[\]]/g, '').split(',').map(t =>
+        `<span class="skill-tag">${t.trim()}</span>`
+      ).join('') : '';
+      return `<div class="skill-item" onclick="invokeSkill('${s.name}')">
+        <div class="skill-name">${s.name}</div>
+        <div class="skill-desc">${s.description || s.trigger || '—'}</div>
+        ${tags ? `<div class="skill-tags">${tags}</div>` : ''}
+      </div>`;
+    }).join('');
+  }
 
-    // Cron jobs
-    const jobs = ctx.cron_jobs || [];
-    if (jobs.length === 0) {
-      el('cron-list').innerHTML = '<p style="font-size:0.72rem;color:var(--muted)">No cron jobs</p>';
+  function invokeSkill(name) {
+    // Feed into command bar
+    $('cmd-input').value = `!${name}`;
+    $('cmd-input').focus();
+    addFeed('cmd', `Invoke skill: !${name}`);
+    closePalette();
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     COMMAND PALETTE
+  ══════════════════════════════════════════════════════════════ */
+  function openPalette() {
+    $('palette-overlay').classList.add('open');
+    $('palette-input').value = '';
+    $('palette-input').focus();
+    filterPalette();
+  }
+
+  function closePalette() {
+    $('palette-overlay').classList.remove('open');
+  }
+
+  function filterPalette() {
+    const q = $('palette-input').value.trim().toLowerCase();
+    const results = $('palette-results');
+    if (!q) {
+      // Default: show quick actions
+      _paletteItems = getQuickActions();
     } else {
-      el('cron-list').innerHTML = jobs.map(j => {
-        const errIcon = j.last_error ? '<span style="color:var(--red);font-size:0.65rem;margin-right:3px" title="' + j.last_error + '">⚠</span>' : '';
-        const statusColor = j.last_status === 'ok' ? 'var(--green)' : (j.last_status ? 'var(--red)' : 'var(--muted)');
-        return `<div class="cron-item">
-          <span class="cron-name ${j.enabled ? 'cron-enabled' : 'cron-disabled'}">${errIcon}${j.name}</span>
-          <span class="cron-next">${j.next_run ? j.next_run.slice(0,16).replace('T',' ') : '—'}</span>
-          <span style="font-size:0.62rem;color:${statusColor}" title="last run: ${j.last_status || '—'}">${j.last_status || '—'}</span>
-          <button class="cron-run-btn" onclick="triggerCron('${j.id}', this)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.7rem;padding:0 2px" title="Run now">▶</button>
-        </div>`;
-      }).join('');
+      _paletteItems = getAllPaletteItems().filter(item =>
+        item.label.toLowerCase().includes(q) ||
+        (item.sublabel && item.sublabel.toLowerCase().includes(q)) ||
+        (item.tags && item.tags.some(t => t.toLowerCase().includes(q)))
+      );
     }
+    _selectedPaletteIdx = 0;
+    renderPalette();
   }
 
-  // ── Cron Trigger ─────────────────────────────────────────────────────────────
-  async function triggerCron(jobId, btn) {
-    btn.textContent = '⏳';
-    btn.style.color = 'var(--yellow)';
-    try {
-      const res = await fetch(API + '/api/cron-jobs/' + encodeURIComponent(jobId) + '/trigger', { method: 'POST' });
-      const d = await res.json();
-      if (d.ok) {
-        btn.textContent = '✅';
-        setTimeout(() => { btn.textContent = '▶'; btn.style.color = 'var(--accent)'; }, 2000);
-        addFeed('cron', 'Triggered: ' + jobId);
-      } else {
-        btn.textContent = '❌';
-        setTimeout(() => { btn.textContent = '▶'; btn.style.color = 'var(--accent)'; }, 2000);
+  function getQuickActions() {
+    return [
+      { icon: '🔍', label: 'Search history', sublabel: 'Full-text search across all conversations', action: () => { switchTab('search'); closePalette(); $('search-input').focus(); }, tags: ['search'] },
+      { icon: '🧠', label: 'Knowledge graph', sublabel: 'Visualize Hermes memory', action: () => { switchTab('graph'); closePalette(); }, tags: ['graph'] },
+      { icon: '⚡', label: 'Skills catalog', sublabel: 'Browse and invoke skills', action: () => { switchTab('skills'); closePalette(); }, tags: ['skills'] },
+      { icon: '⏭', label: 'Trigger morning briefing', sublabel: 'Run the morning-briefing cron now', action: () => { triggerCronByName('morning-briefing'); closePalette(); }, tags: ['cron'] },
+      { icon: '📡', label: 'View live feed', sublabel: 'See recent events', action: () => { document.querySelector('#feed-list').scrollTop = 0; closePalette(); }, tags: ['feed'] },
+      { icon: '🔄', label: 'Refresh all panels', sublabel: 'Reload status, sessions, graph', action: () => { boot(); closePalette(); }, tags: ['refresh'] },
+    ];
+  }
+
+  function getAllPaletteItems() {
+    const q = $('palette-input').value.trim().toLowerCase();
+    const items = [...getQuickActions()];
+    // Add skills
+    if (_skillsCatalog) {
+      for (const s of _skillsCatalog) {
+        items.push({
+          icon: '⚡',
+          label: s.name,
+          sublabel: s.description || s.trigger || '',
+          action: () => { invokeSkill(s.name); },
+          tags: s.tags ? s.tags.replace(/[\[\]]/g, '').split(',').map(t => t.trim()) : [],
+        });
       }
-    } catch (e) {
-      btn.textContent = '❌';
-      setTimeout(() => { btn.textContent = '▶'; btn.style.color = 'var(--accent)'; }, 2000);
     }
+    // Add search suggestions
+    const popularSearches = ['fitness', 'hermes', 'homelab', 'github', 'paperclip', 'cron', 'maxi'];
+    for (const sq of popularSearches) {
+      if (sq.includes(q)) {
+        items.push({
+          icon: '🔍',
+          label: `Search: "${sq}"`,
+          sublabel: 'Search conversation history',
+          action: () => {
+            switchTab('search');
+            closePalette();
+            $('search-input').value = sq;
+            doSearch();
+          },
+          tags: ['search'],
+        });
+      }
+    }
+    return items;
   }
 
-  // ── SSE ───────────────────────────────────────────────────────────────────
+  let _skillsCatalog = [];
+
+  async function loadSkillsForPalette() {
+    const d = await api('/api/skills-catalog');
+    if (d.ok && d.data) _skillsCatalog = d.data;
+  }
+
+  function renderPalette() {
+    const results = $('palette-results');
+    if (_paletteItems.length === 0) {
+      results.innerHTML = '<div style="padding:16px;text-align:center;font-size:0.8rem;color:var(--muted)">No results</div>';
+      return;
+    }
+    results.innerHTML = _paletteItems.map((item, i) =>
+      `<div class="palette-item ${i === _selectedPaletteIdx ? 'selected' : ''}" onclick="executePaletteItem(${i})">
+        <span class="icon">${item.icon}</span>
+        <div>
+          <div class="label">${item.label}</div>
+          ${item.sublabel ? `<div class="sublabel">${item.sublabel}</div>` : ''}
+        </div>
+        ${item.shortcut ? `<span class="shortcut">${item.shortcut}</span>` : ''}
+      </div>`
+    ).join('');
+  }
+
+  function executePaletteItem(idx) {
+    const item = _paletteItems[idx];
+    if (item && item.action) item.action();
+    else closePalette();
+  }
+
+  function executeSelected() {
+    executePaletteItem(_selectedPaletteIdx);
+  }
+
+  // Keyboard navigation
+  document.addEventListener('keydown', e => {
+    if ($('palette-overlay').classList.contains('open')) {
+      if (e.key === 'ArrowDown') {
+        _selectedPaletteIdx = Math.min(_selectedPaletteIdx + 1, _paletteItems.length - 1);
+        renderPalette(); e.preventDefault();
+      } else if (e.key === 'ArrowUp') {
+        _selectedPaletteIdx = Math.max(_selectedPaletteIdx - 1, 0);
+        renderPalette(); e.preventDefault();
+      }
+      return;
+    }
+    if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+      e.preventDefault(); openPalette();
+    }
+    if (e.key === 'Escape') {
+      if ($('palette-overlay').classList.contains('open')) closePalette();
+    }
+  });
+
+  /* ══════════════════════════════════════════════════════════════
+     SSE
+  ══════════════════════════════════════════════════════════════ */
   function connectSSE() {
     if (eventSource) eventSource.close();
     eventSource = new EventSource(API + '/events');
@@ -547,18 +1093,40 @@
     eventSource.addEventListener('open', () => updateConnection(true));
   }
 
-  // ── Boot ──────────────────────────────────────────────────────────────────
-  async function boot() {
-    await loadStatus();
-    await loadBrain();
-    await loadBriefing();
-    await loadSessions();
-    loadFeed();
-    connectSSE();
-    setInterval(loadStatus, 30000);
-    setInterval(loadBrain, 60000);
-    setInterval(loadSessions, 30000);
+  /* ══════════════════════════════════════════════════════════════
+     CRON
+  ══════════════════════════════════════════════════════════════ */
+  async function triggerCronByName(name) {
+    const d = await api('/api/cron-jobs');
+    if (!d.ok || !d.data) return;
+    const job = d.data.find(j => j.name === name || j.id.includes(name));
+    if (job) {
+      await fetch(API + '/api/cron-jobs/' + encodeURIComponent(job.id) + '/trigger', { method: 'POST' });
+      addFeed('cron', 'Triggered: ' + job.name);
+    }
   }
+
+  /* ══════════════════════════════════════════════════════════════
+     BOOT
+  ══════════════════════════════════════════════════════════════ */
+  async function boot() {
+    resizeCanvas();
+    await Promise.all([
+      loadStatus(),
+      loadSessions(),
+      loadBriefing(),
+      loadSkills(),
+      loadSkillsForPalette(),
+    ]);
+    await loadGraph();
+    connectSSE();
+    addFeed('system', 'Mission Control online');
+    setInterval(loadStatus, 30000);
+    setInterval(loadSessions, 30000);
+    setInterval(loadBriefing, 60000);
+  }
+
+  window.addEventListener('resize', () => { resizeCanvas(); });
 
   boot();
 </script>

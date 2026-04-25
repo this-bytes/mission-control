@@ -179,6 +179,36 @@ async def get_skills():
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
+@app.get("/api/graph")
+async def get_graph():
+    """Knowledge Graph: force-directed entity graph from memory_store.db."""
+    try:
+        graph = hermes.get_knowledge_graph()
+        return {"ok": True, "data": graph}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@app.get("/api/skills-catalog")
+async def get_skills_catalog():
+    """Skills catalog: all available skills with triggers + descriptions."""
+    try:
+        catalog = hermes.get_skills_catalog()
+        return {"ok": True, "data": catalog}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@app.get("/api/history/search")
+async def search_history(q: str = "", limit: int = 10):
+    """Full-text search across conversation history using FTS5."""
+    try:
+        results = hermes.search_history(q, limit=min(limit, 50))
+        return {"ok": True, "data": results, "query": q, "count": len(results)}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
 @app.post("/api/cron-jobs/{job_id}/trigger")
 async def trigger_cron(job_id: str):
     """Trigger an immediate cron job run."""

@@ -410,3 +410,194 @@ class HermesAdaptor:
                 yield line[6:]
             elif line.strip() == "data: [DONE]":
                 break
+
+    # ── Knowledge Graph ─────────────────────────────────────────────────────────
+    # Reads the SQLite memory_store to construct a force-directed graph of
+    # entities and facts. Powers the 🧠 Knowledge Graph panel.
+
+    def get_knowledge_graph(self) -> dict:
+        """
+        Build nodes + edges from memory_store.db.
+        Nodes = entities. Edges = facts linking entities.
+        Returns {nodes: [{id, name, type}], edges: [{source, target, label}]}
+        """
+        db_path = self._hermes_home / "memory_store.db"
+        if not db_path.exists():
+            return {"nodes": [], "edges": []}
+
+        try:
+            import sqlite3
+            conn = sqlite3.connect(str(db_path))
+            cur = conn.cursor()
+
+            # Nodes: all entities
+            cur.execute("SELECT entity_id, name, entity_type FROM entities")
+            nodes = [
+                {"id": str(row[0]), "name": row[1], "type": row[2] or "concept"}
+                for row in cur.fetchall()
+            ]
+
+            # Edges: facts link entity pairs
+            # Each fact may reference multiple entities — build edge per pair
+            cur.execute("""
+                SELECT fe.fact_id, fe.entity_id, e.name, f.content, f.category
+                FROM fact_entities fe
+                JOIN entities e ON fe.entity_id = e.entity_id
+                JOIN facts f ON fe.fact_id = f.fact_id
+                ORDER BY fe.fact_id
+            """)
+            rows = cur.fetchall()
+
+            # Group by fact_id to find entity pairs within each fact
+            from collections import defaultdict
+            fact_to_entities = defaultdict(list)
+            fact_meta = {}
+            for fact_id, entity_id, entity_name, content, category in rows:
+                fact_to_entities[fact_id].append((str(entity_id), entity_name))
+                if fact_id not in fact_meta:
+                    fact_meta[fact_id] = (content[:120], category)
+
+            edges = []
+            for fact_id, entities in fact_to_entities.items():
+                if len(entities) >= 2:
+                    # Connect consecutive entity pairs in this fact
+                    for i in range(len(entities) - 1):
+                        src, src_name = entities[i]
+                        dst, dst_name = entities[i + 1]
+                        content_preview, category = fact_meta.get(fact_id, ("", ""))
+                        edges.append({
+                            "source": src,
+                            "target": dst,
+                            "label": category or "related",
+                            "fact_preview": content_preview,
+                        })
+                elif len(entities) == 1:
+                    # Single entity self-link (for orphan facts)
+                    src, src_name = entities[0]
+                    content_preview, category = fact_meta.get(fact_id, ("", ""))
+                    edges.append({
+                        "source": src,
+                        "target": src,
+                        "label": category or "mentioned",
+                        "fact_preview": content_preview,
+                    })
+
+            conn.close()
+            return {"nodes": nodes, "edges": edges}
+        except Exception as e:
+            return {"nodes": [], "edges": [], "error": str(e)}
+
+    # ── Skills Catalog ─────────────────────────────────────────────────────────
+    # Scans ~/.hermes/skills/<name>/SKILL.md for metadata + descriptions.
+    # Used by the Command Palette to surface all available actions.
+
+    def get_skills_catalog(self) -> list[dict]:
+        """
+        Return all skills as [{name, description, tags, trigger, owner}].
+        Reads frontmatter from each SKILL.md.
+        """
+        skills_dir = self._hermes_home / "skills"
+        if not skills_dir.exists():
+            return []
+
+        catalog = []
+        for skill_path in skills_dir.iterdir():
+            if not skill_path.is_dir():
+                continue
+            skill_md = skill_path / "SKILL.md"
+            if not skill_md.exists():
+                continue
+
+            try:
+                content = skill_md.read_text(errors="replace")
+                meta = {}
+                lines = content.split("\n")
+                in_fm = False
+                fm_lines = []
+                for line in lines:
+                    if line.strip() == "---":
+                        if in_fm:
+                            for fl in fm_lines:
+                                if ":" in fl:
+                                    k, v = fl.split(":", 1)
+                                    meta[k.strip()] = v.strip()
+                            break
+                        in_fm = True
+                    elif in_fm:
+                        fm_lines.append(line)
+
+                # Extract description: first non-frontmatter line after ## name heading
+                desc = meta.get("description", "")
+                # Try to find the first trigger section
+                trigger = ""
+                if "## Trigger" in content:
+                    trig_section = content.split("## Trigger")[1].split("##")[0]
+                    # Get first 200 chars of trigger section
+                    trigger = trig_section.strip()[:200].replace("\n", " ")
+
+                catalog.append({
+                    "name": skill_path.name,
+                    "description": desc,
+                    "tags": meta.get("tags", ""),
+                    "trigger": trigger,
+                    "owner": meta.get("owner", ""),
+                    "version": meta.get("version", ""),
+                })
+            except Exception:
+                continue
+
+        catalog.sort(key=lambda x: x["name"])
+        return catalog
+
+    # ── Session History Search ─────────────────────────────────────────────────
+    # Uses Hermes's own FTS5 index on state.db for full-text search.
+    # Returns matching messages with session context.
+
+    def search_history(self, query: str, limit: int = 10) -> list[dict]:
+        """
+        Full-text search across all conversation history.
+        Uses FTS5 on state.db — the same index Hermes uses.
+        Returns top matches with session context and timestamp.
+        """
+        db_path = self._hermes_home / "state.db"
+        if not db_path.exists() or not query.strip():
+            return []
+
+        try:
+            import sqlite3
+            conn = sqlite3.connect(str(db_path))
+            cur = conn.cursor()
+
+            # FTS5 search across messages
+            # Use the FTS5 virtual table (messages_fts)
+            cur.execute("""
+                SELECT m.id, m.session_id, m.role, m.content, m.timestamp,
+                       s.source, s.title
+                FROM messages_fts f
+                JOIN messages m ON m.id = f.rowid
+                LEFT JOIN sessions s ON m.session_id = s.id
+                WHERE messages_fts MATCH ?
+                ORDER BY rank
+                LIMIT ?
+            """, (query + "*", limit))
+
+            results = []
+            for row in cur.fetchall():
+                msg_id, session_id, role, content, timestamp, source, title = row
+                if content and len(content) > 500:
+                    # Truncate long content
+                    content = content[:400] + "..."
+                results.append({
+                    "id": msg_id,
+                    "session_id": session_id,
+                    "role": role,
+                    "content": content,
+                    "timestamp": timestamp,
+                    "source": source or "unknown",
+                    "title": title or session_id or "",
+                })
+
+            conn.close()
+            return results
+        except Exception as e:
+            return [{"error": str(e), "query": query}]

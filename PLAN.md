@@ -302,6 +302,7 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 - [x] ~~Confirm server port availability~~ — port 8420 running via systemd ✅
 - [x] ~~Clarify access model~~ — local network only (no auth on MVP)
 - [x] ~~Discover how to send prompts to Hermes~~ — OpenAI-compatible API at port 8642, no auth required locally
+- [ ] **GitHub backup blocked** — GitHub MCP has bad credentials. Need GitHub auth token or `gh` CLI set up on the server. `gh` is not installed and no `GH_TOKEN` / `GITHUB_TOKEN` env var found. GitHub MCP call also failed with "Authentication Failed: Bad credentials". Need Aaron to set up GitHub auth so we can `git push` to backup the repo.
 
 ---
 
