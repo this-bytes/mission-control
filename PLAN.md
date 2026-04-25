@@ -195,6 +195,40 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-26 06:30 UTC
+
+### Changes Made
+
+**1. Real SSE Token Streaming (FINALLY)**
+- Root cause: `httpx.AsyncClient.aiter_lines()` uses an internal chunk buffer that can split SSE `\n\n` delimiters across network reads
+- Fix: `HermesAdaptor._stream_lines()` now uses `response.aiter_bytes(chunk_size=1)` + manual newline splitting, so the SSE boundary is detected correctly per-byte
+- Dashboard now calls `/api/command/stream` — tokens render instantly as they arrive from Hermes, no fake typing animation
+
+**2. Morning Briefing Panel**
+- New `/api/briefing` endpoint: reads recent cron session files, finds the last assistant message >200 chars (the actual briefing), returns preview + pending crons
+- Briefing strip appears below the topbar when a briefing is found — shows preview text + generation timestamp
+- Falls back to showing upcoming cron jobs strip even without a briefing
+
+**3. Active Sessions Panel**
+- New `/api/sessions` endpoint: reads `~/.hermes/sessions/sessions.json` index, enriches with per-session message counts from session files, returns top 10 sorted by `updated_at`
+- New Sessions panel in dashboard: platform icon (💬/✈️/🔌), session name, msg count, token usage, last updated
+
+**4. Dashboard Grid Layout**
+- 3-column: `[Status + Sessions]` `[Feed]` `[Brain]`
+- Command bar now spans both left columns (full width)
+- Sessions panel on row 3 left, Feed on row 1 col 2, Brain spans rows 1-3 right
+
+### Current State
+- Service running on port 8420
+- All new endpoints verified: /api/briefing ✅ /api/sessions ✅ /api/streaming ✅
+- Git clean: 0976ee0
+
+### Next Sprint Candidates
+1. **Git remote push** — backup to GitHub/Gitea
+2. **Better streaming** — try chunk_size=64 or larger for perf (chunk_size=1 is correct but slow)
+3. **Memory graph panel** — visualize what Hermes knows as entities
+4. **Panel customization** — drag/drop to reorder panels
+
 ## Session Log — 2026-04-26 06:00 UTC
 
 ### Changes Made
