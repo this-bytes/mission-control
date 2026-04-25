@@ -195,6 +195,32 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-26 07:30 UTC
+
+### Bug Fixes
+
+**1. SSE /events endpoint — broken cleanup**
+- Root cause: `FastAPI Request` has no `add_event_callback()` method
+- Every SSE connection was throwing `AttributeError` at line 75
+- Fix: moved subscriber cleanup into `gen()`'s `try/finally` block — fires when client disconnects
+- Confirmed: `/events` now returns 200 with `event: ping` on connect
+
+**2. Streaming token extraction — silent failure**
+- Root cause: `parsed["choices"]` is a Python `list`, not `dict`
+- Chained `.get(0, {})` call failed: `list has no .get()` method
+- All tokens silently swallowed, streaming returned only `done`
+- Fix: `choices = parsed.get("choices"); if choices and isinstance(choices, list): delta = choices[0].get(...)`
+- Confirmed: `curl /api/command/stream` now returns `event: token` + actual tokens + `event: done`
+
+### Current State
+- Service running on port 8420 (systemd, enabled, survives reboots)
+- All 10 API endpoints verified ✅
+- SSE stream working ✅
+- Streaming command working ✅
+- Git committed: 14a71fc (fix: SSE endpoint + streaming token extraction)
+
+### No Blockers
+
 ## Session Log — 2026-04-26 06:30 UTC
 
 ### Changes Made
@@ -302,7 +328,30 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 - [x] ~~Confirm server port availability~~ — port 8420 running via systemd ✅
 - [x] ~~Clarify access model~~ — local network only (no auth on MVP)
 - [x] ~~Discover how to send prompts to Hermes~~ — OpenAI-compatible API at port 8642, no auth required locally
-- [ ] **GitHub backup blocked** — GitHub MCP has bad credentials. Need GitHub auth token or `gh` CLI set up on the server. `gh` is not installed and no `GH_TOKEN` / `GITHUB_TOKEN` env var found. GitHub MCP call also failed with "Authentication Failed: Bad credentials". Need Aaron to set up GitHub auth so we can `git push` to backup the repo.
+- [ ] **GitHub backup blocked** — SSH key (`~/.ssh/arlo_git`) exists and is configured in `~/.ssh/config` for github.com. BUT: (1) GitHub MCP has bad credentials — `gh` CLI is not installed and cannot be installed (no root/apt access). (2) GitHub API returns 401 with the ops service account token. (3) Repository `arlo/mission-control` does not exist yet on GitHub — needs to be created first. Need Aaron to either: (a) create the repo manually on GitHub web UI, or (b) provide a GitHub PAT with `repo` scope that can be used to create the repo via API.
+
+## Session Log — 2026-04-26 08:33 UTC
+
+### Changes Made
+1. **Streaming performance fix** — increased `chunk_size` from 1 to 128 in `_stream_lines()` (128x fewer async iterations, still correct SSE boundary detection). Verified: `curl /api/command/stream` returns tokens correctly.
+2. **Git remote added** — `git remote add origin git@github.com:arlo/mission-control.git`. Verified SSH key exists at `~/.ssh/arlo_git` with github.com host configured in `~/.ssh/config`.
+
+### GitHub Backup Attempted — BLOCKER REMAINS
+- `git push` → "Repository not found" (repo doesn't exist yet)
+- GitHub API repo creation → 401 Bad credentials
+- `gh` CLI → not installed, can't install (no root)
+- SSH key (`arlo_git`) exists and is correct for github.com host
+- **Need Aaron to create the repo manually at github.com/arlo/mission-control**, then `git push` will work via SSH
+
+### Current State
+- Service running on port 8420 (systemd, enabled, survives reboots) ✅
+- All API endpoints verified ✅
+- Git committed: e555ee5 (streaming perf: chunk_size 1->128)
+- Streaming working ✅
+- Git remote configured, SSH key in place
+- GitHub repo does not exist → push blocked
+
+### No Blockers for Core MVP
 
 ---
 
