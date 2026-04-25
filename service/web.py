@@ -59,20 +59,21 @@ async def events(request: Request):
     _subscribers.append(q)
 
     async def gen():
-        yield {"event": "ping", "data": "keepalive"}
-        while True:
-            try:
-                payload = await asyncio.wait_for(q.get(), timeout=30)
-                yield {"event": "message", "data": payload}
-            except asyncio.TimeoutError:
-                yield {"event": "ping", "data": "keepalive"}
-            except GeneratorExit:
-                break
+        try:
+            yield {"event": "ping", "data": "keepalive"}
+            while True:
+                try:
+                    payload = await asyncio.wait_for(q.get(), timeout=30)
+                    yield {"event": "message", "data": payload}
+                except asyncio.TimeoutError:
+                    yield {"event": "ping", "data": "keepalive"}
+        except GeneratorExit:
+            pass
+        finally:
+            # Cleanup when client disconnects
+            if q in _subscribers:
+                _subscribers.remove(q)
 
-    async def cleanup():
-        _subscribers.remove(q)
-
-    request.add_event_callback(cleanup)
     return EventSourceResponse(gen())
 
 
@@ -279,16 +280,12 @@ async def post_command_stream(request: Request):
                                 yield {"event": "done", "data": ""}
                                 return
                             try:
-                                import json
                                 parsed = json.loads(payload)
-                                delta = (
-                                    parsed.get("choices", [{}])
-                                    .get(0, {})
-                                    .get("delta", {})
-                                    .get("content", "")
-                                )
-                                if delta:
-                                    yield {"event": "token", "data": delta}
+                                choices = parsed.get("choices")
+                                if choices and isinstance(choices, list):
+                                    delta = choices[0].get("delta", {}).get("content", "")
+                                    if delta:
+                                        yield {"event": "token", "data": delta}
                             except Exception:
                                 pass
             except Exception as e:
