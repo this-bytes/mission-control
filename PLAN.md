@@ -195,6 +195,32 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-26 06:00 UTC
+
+### Changes Made
+1. **Made repo fully portable and git-ready**
+   - Initialized git repo with initial commit (049cb8c)
+   - Created `.gitignore`: excludes `venv/`, `__pycache__/`, `config/settings.json` (secrets), `mission-control.service` (system-wide path)
+   - All file paths now resolved **relative to the repo root** via `Path(__file__).parent`, not cwd
+   - `HERMES_HOME` env var override added to `HermesAdaptor` — allows the repo to live anywhere
+   - hermes binary lookup now checks `$HERMES_HOME/bin`, `/usr/local/bin`, `~/.local/bin` in order
+   - `cron trigger` now falls back to `$HERMES_HOME/bin/python` if venv path doesn't exist
+   - `.env.example` created documenting all env vars
+   - `install/install.sh` created: creates venv, installs deps, sets up systemd service (user or system level), with `--verify` mode for checks only
+   - `README.md` created with full documentation
+2. **Service verified operational** — `curl /api/status` returns `OK=True`, all 3 platforms visible, Hermes v0.11.0, 16 cron jobs tracked
+
+### Current State
+- Git repo initialized, clean working tree
+- All paths portable (no `/home/localadmin` hardcoded in Python code)
+- Service still running on port 8420, verified working
+
+### Next Sprint Candidates
+1. **Streaming responses** — SSE stream of Hermes response token-by-token (httpx→SSE bridging issue with aiter_lines buffering)
+2. **Morning briefing synthesis** — surface briefing skill output in dashboard
+3. **Full context panel** — show active conversations, recent learnings
+4. **Git remote** — push to GitHub/Gitea for backup
+
 ## Session Log — 2026-04-26 05:17 UTC
 
 ### Changes Made
