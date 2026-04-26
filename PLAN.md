@@ -195,6 +195,35 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 03:34 UTC
+
+### Changes Made
+
+**Briefing Panel — Section-Parsed HTML Rendering (UPGRADE)**
+- Previously: briefing text was displayed as raw `textContent` (plain text, no formatting)
+- Now: `renderBriefing()` parses briefing into structured HTML sections:
+  - **PENDING:** items rendered with `-` bullet points, **HOMELAB:** extracted into a red-bordered alert box
+  - Section labels (PENDING, UPDATES, etc.) styled as uppercase label headers
+  - Homelab CRITICAL block gets dedicated `.homelab-alert` styled div with red border and amber text highlights
+  - Crons fallback (when no briefing) shows items with ⏰ dot prefix
+- CSS: `.briefing-section`, `.briefing-section-label`, `.briefing-item`, `.homelab-alert`, `.homelab-alert-body`
+- Homelab currently shows CRITICAL: all hosts unreachable (network issue, not a code problem)
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID fresh restart)
+- Git committed + pushed: `20d1674` ✅
+- All endpoints healthy: /api/ping ✅ /api/status ✅ /api/briefing ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials
+2. **Memory graph type coloring** — blocked: Hermes populates entity types (20 entities all "unknown", 4 facts total)
+3. **Morning briefing quality** — content correct and now better formatted; could improve briefing generation prompts directly
+4. **Dependabot fixes** — 3 moderate GitHub vulnerabilities (low priority)
+
+---
+
 ## Session Log — 2026-04-27 02:30 UTC
 
 ### Changes Made
