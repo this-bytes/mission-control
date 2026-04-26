@@ -180,6 +180,26 @@ async def get_skills():
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
+@app.get("/api/paperclip/issues")
+async def get_paperclip_issues(status: str = ""):
+    """Paperclip issues — optionally filter by status (open,blocked,in_progress)."""
+    try:
+        issues = hermes.get_paperclip_issues(status=status)
+        return {"ok": True, "data": issues}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@app.get("/api/paperclip/goals")
+async def get_paperclip_goals():
+    """Paperclip goals."""
+    try:
+        goals = hermes.get_paperclip_goals()
+        return {"ok": True, "data": goals}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
 @app.get("/api/graph")
 async def get_graph():
     """Knowledge Graph: force-directed entity graph from memory_store.db."""

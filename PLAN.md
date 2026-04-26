@@ -328,7 +328,32 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 - [x] ~~Confirm server port availability~~ — port 8420 running via systemd ✅
 - [x] ~~Clarify access model~~ — local network only (no auth on MVP)
 - [x] ~~Discover how to send prompts to Hermes~~ — OpenAI-compatible API at port 8642, no auth required locally
-- [ ] **GitHub backup blocked** — SSH key (`~/.ssh/arlo_git`) exists and is configured in `~/.ssh/config` for github.com. BUT: (1) GitHub MCP has bad credentials — `gh` CLI is not installed and cannot be installed (no root/apt access). (2) GitHub API returns 401 with the ops service account token. (3) Repository `arlo/mission-control` does not exist yet on GitHub — needs to be created first. Need Aaron to either: (a) create the repo manually on GitHub web UI, or (b) provide a GitHub PAT with `repo` scope that can be used to create the repo via API.
+- [x] ~~GitHub backup~~ — SSH key works, `git push` succeeds. Repo at `this-bytes/mission-control` (git remote: `git@github.com:this-bytes/mission-control.git`). Backup working ✅
+
+## Session Log — 2026-04-26 10:15 UTC
+
+### Changes Made
+
+**1. Cron Jobs Panel** — New dedicated panel added to dashboard left column:
+- Shows all 15 cron jobs with: name, schedule expression, last run time, status badge (✓ ok / ⚠ error / —)
+- Error messages displayed inline in amber when `last_error` is present
+- **▶ Run button** per job — triggers `POST /api/cron-jobs/{id}/trigger`, confirmed working
+- 30s auto-refresh synced with other panels
+- `api()` JS helper extended to support `POST` method (was GET-only before)
+
+### Current State
+- Service running on port 8420 (systemd) ✅
+- All endpoints verified: /api/status ✅ /api/cron-jobs ✅ /api/streaming ✅ /events ✅
+- Git committed: f283ba6 (cron jobs panel)
+- 15 cron jobs visible in dashboard, all clean (no errors)
+
+### GitHub Backup — BLOCKER
+- Remote already set: `git@github.com:this-bytes/mission-control.git`
+- `git push --dry-run` → "Everything up-to-date" (pushed successfully)
+- **Note:** repo is at `this-bytes/mission-control` (not `arlo/mission-control` as originally planned)
+- No further action needed on backup
+
+### No Blockers for Core MVP
 
 ## Session Log — 2026-04-26 08:33 UTC
 

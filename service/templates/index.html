@@ -380,7 +380,25 @@
     }
     #palette-footer span { display: flex; align-items: center; gap: 4px; }
 
-    /* ── Utility ─────────────────────────────────────────── */
+    .pc-filter-btn {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 3px; color: var(--muted); font-size: 0.6rem;
+      padding: 1px 6px; cursor: pointer; transition: all 0.15s;
+    }
+    .pc-filter-btn:hover, .pc-filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .issue-item { padding: 6px 0; border-bottom: 1px solid rgba(55,65,81,0.5); }
+    .issue-item:last-child { border-bottom: none; }
+    .issue-title { font-size: 0.72rem; color: var(--text); line-height: 1.3; }
+    .issue-meta { font-size: 0.6rem; color: var(--muted); margin-top: 2px; display: flex; gap: 6px; align-items: center; }
+    .issue-status { padding: 0 4px; border-radius: 3px; font-weight: 600; }
+    .status-blocked { background: rgba(239,68,68,0.2); color: var(--red); }
+    .status-in_progress { background: rgba(59,130,246,0.2); color: var(--accent); }
+    .status-open { background: rgba(34,197,94,0.2); color: var(--green); }
+    .goal-item { padding: 4px 0; font-size: 0.7rem; border-bottom: 1px solid rgba(55,65,81,0.4); }
+    .goal-item:last-child { border-bottom: none; }
+    .goal-name { color: var(--text); font-weight: 500; }
+    .goal-meta { color: var(--muted); font-size: 0.6rem; }
+
     .mono { font-family: 'Cascadia Code', 'Fira Code', monospace; }
     .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .scroll-thin::-webkit-scrollbar { width: 4px; }
@@ -465,6 +483,7 @@
     <div id="tab-bar">
       <button class="tab-btn active" onclick="switchTab('graph')" id="tab-graph">🧠 Graph</button>
       <button class="tab-btn" onclick="switchTab('search')" id="tab-search">🔍 Search</button>
+      <button class="tab-btn" onclick="switchTab('paperclip')" id="tab-paperclip">📋 Issues</button>
       <button class="tab-btn" onclick="switchTab('skills')" id="tab-skills">⚡ Skills</button>
     </div>
 
@@ -485,6 +504,25 @@
       </div>
       <div id="search-results">
         <div id="search-empty">Type a query above to search your conversation history</div>
+      </div>
+    </div>
+
+    <!-- Paperclip Issues Panel -->
+    <div class="tab-panel" id="panel-paperclip">
+      <div class="tab-panel-header">
+        📋 Paperclip Issues
+        <div style="float:right;display:flex;gap:4px;">
+          <button onclick="loadPaperclipIssues('')" id="pc-filter-all" class="pc-filter-btn">All</button>
+          <button onclick="loadPaperclipIssues('blocked')" id="pc-filter-blocked" class="pc-filter-btn">Blocked</button>
+          <button onclick="loadPaperclipIssues('in_progress')" id="pc-filter-progress" class="pc-filter-btn">In Progress</button>
+        </div>
+      </div>
+      <div id="paperclip-issues" style="flex:1;overflow-y:auto;padding:6px 10px;">
+        <div style="font-size:0.72rem;color:var(--muted);padding:10px 0;text-align:center;">Loading...</div>
+      </div>
+      <div id="paperclip-goals" style="border-top:1px solid var(--border);max-height:160px;overflow-y:auto;padding:6px 10px;">
+        <div style="font-size:0.62rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Goals</div>
+        <div id="paperclip-goals-list" style="font-size:0.68rem;color:var(--muted);">Loading...</div>
       </div>
     </div>
 
@@ -1015,6 +1053,73 @@
     }).join('');
   }
 
+  /* ══════════════════════════════════════════════════════════════
+     PAPERCLIP ISSUES
+  ══════════════════════════════════════════════════════════════ */
+  let _pcFilter = '';
+  let _pcIssuesCache = [];
+
+  async function loadPaperclipIssues(status) {
+    _pcFilter = status;
+    const container = $('paperclip-issues');
+    container.innerHTML = '<div style="font-size:0.72rem;color:var(--muted);padding:10px 0;text-align:center;">Loading...</div>';
+
+    // Update filter button styles
+    document.querySelectorAll('.pc-filter-btn').forEach(b => b.classList.remove('active'));
+    const btnMap = {'': 'pc-filter-all', 'blocked': 'pc-filter-blocked', 'in_progress': 'pc-filter-progress'};
+    const activeBtn = btnMap[status] || 'pc-filter-all';
+    $(activeBtn).classList.add('active');
+
+    try {
+      const url = status ? `/api/paperclip/issues?status=${encodeURIComponent(status)}` : '/api/paperclip/issues';
+      const d = await api(url);
+      if (!d.ok || !d.data || d.data.length === 0) {
+        container.innerHTML = '<div style="font-size:0.72rem;color:var(--muted);padding:10px 0;text-align:center;">No issues found</div>';
+        return;
+      }
+      _pcIssuesCache = d.data;
+      container.innerHTML = _pcIssuesCache.slice(0, 30).map(issue => {
+        const statusClass = issue.status === 'blocked' ? 'status-blocked'
+          : issue.status === 'in_progress' ? 'status-in_progress'
+          : 'status-open';
+        const updated = issue.updatedAt ? new Date(issue.updatedAt).toLocaleDateString('en-AU', { hour12: false }) : '—';
+        const labels = issue.labels && issue.labels.length
+          ? issue.labels.map(l => `<span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:0 4px;font-size:0.58rem;margin-left:4px">${l}</span>`).join('')
+          : '';
+        return `<div class="issue-item">
+          <div class="issue-title">${issue.title || 'Untitled'}</div>
+          <div class="issue-meta">
+            <span class="issue-status ${statusClass}">${issue.status || 'open'}</span>
+            <span>${updated}</span>
+            ${labels}
+          </div>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      container.innerHTML = '<div style="font-size:0.72rem;color:var(--red);padding:10px 0;text-align:center;">Failed to load issues</div>';
+    }
+  }
+
+  async function loadPaperclipGoals() {
+    const list = $('paperclip-goals-list');
+    try {
+      const d = await api('/api/paperclip/goals');
+      if (!d.ok || !d.data || d.data.length === 0) {
+        list.innerHTML = '<div style="font-size:0.7rem;color:var(--muted)">No goals found</div>';
+        return;
+      }
+      list.innerHTML = d.data.slice(0, 10).map(g => {
+        const status = g.status || 'unknown';
+        return `<div class="goal-item">
+          <div class="goal-name">${g.title || g.name || 'Untitled Goal'}</div>
+          <div class="goal-meta">${status}</div>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      list.innerHTML = '<div style="font-size:0.7rem;color:var(--red)">Failed to load goals</div>';
+    }
+  }
+
   function invokeSkill(name) {
     // Feed into command bar
     $('cmd-input').value = `!${name}`;
@@ -1202,13 +1307,19 @@
       loadSkills(),
       loadSkillsForPalette(),
     ]);
-    await loadGraph();
+    await Promise.all([
+      loadGraph(),
+      loadPaperclipIssues(''),
+      loadPaperclipGoals(),
+    ]);
     connectSSE();
     addFeed('system', 'Mission Control online');
     setInterval(loadStatus, 30000);
     setInterval(loadSessions, 30000);
     setInterval(loadCrons, 30000);
     setInterval(loadBriefing, 60000);
+    setInterval(loadPaperclipIssues, 60000);
+    setInterval(loadPaperclipGoals, 60000);
   }
 
   window.addEventListener('resize', () => { resizeCanvas(); });

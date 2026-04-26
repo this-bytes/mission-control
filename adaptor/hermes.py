@@ -16,7 +16,9 @@ Path resolution (in priority order):
 import httpx
 import json
 import os
+import ssl
 import subprocess
+import urllib.request
 from pathlib import Path
 from datetime import datetime
 from typing import Any, Optional
@@ -486,6 +488,64 @@ class HermesAdaptor:
             return {"nodes": nodes, "edges": edges}
         except Exception as e:
             return {"nodes": [], "edges": [], "error": str(e)}
+
+    # ── Paperclip Integration ──────────────────────────────────────────────────
+    # Queries the Paperclip API directly for issues + goals.
+    # Paperclip API runs at http://10.87.1.201:3100 (this machine is ai-ass).
+    # Auth: session cookie from the skill (read-only, no key needed).
+
+    def _paperclip_request(self, path: str) -> dict:
+        """Make a request to the Paperclip API."""
+        import ssl
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+        cookie = "better-auth.session_token=iJW6zFDvP0jX7z1vVufpinFMwxkOqi3X.0LUSgbjWxBgwpKKtF8xTRdNE5gqD6ek5aOHOWs8wDM4%3D"
+        base_ip = "10.87.1.201"
+        url = f"http://{base_ip}:3100{path}"
+        req = urllib.request.Request(url)
+        req.add_header("Origin", f"http://{base_ip}:3100")
+        req.add_header("Cookie", cookie)
+        try:
+            with urllib.request.urlopen(req, timeout=10, context=ctx) as resp:
+                return json.loads(resp.read().decode())
+        except Exception as e:
+            return {"error": str(e)}
+
+    def get_paperclip_issues(self, status: str = "") -> list[dict]:
+        """
+        Get issues from Paperclip API.
+        status param: "open", "blocked", "in_progress" or comma-separated list.
+        Returns list of issues sorted by updated_at desc.
+        """
+        company_id = "b4eab370-3bf1-4b21-8272-89b2157d9068"
+        if status:
+            path = f"/api/companies/{company_id}/issues?status={status}&limit=50"
+        else:
+            path = f"/api/companies/{company_id}/issues?limit=50"
+        data = self._paperclip_request(path)
+        if isinstance(data, dict) and "error" in data:
+            return []
+        # API returns a JSON list directly
+        if not isinstance(data, list):
+            return []
+        # Sort by updatedAt desc
+        data.sort(key=lambda x: x.get("updatedAt", ""), reverse=True)
+        return data[:20]
+
+    def get_paperclip_goals(self) -> list[dict]:
+        """
+        Get goals from Paperclip API.
+        Returns list of goals with their current status.
+        """
+        company_id = "b4eab370-3bf1-4b21-8272-89b2157d9068"
+        data = self._paperclip_request(f"/api/companies/{company_id}/goals")
+        if isinstance(data, dict) and "error" in data:
+            return []
+        if not isinstance(data, list):
+            return []
+        return data[:20]
 
     # ── Skills Catalog ─────────────────────────────────────────────────────────
     # Scans ~/.hermes/skills/<name>/SKILL.md for metadata + descriptions.
