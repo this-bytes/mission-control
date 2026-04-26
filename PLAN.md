@@ -195,6 +195,42 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-26 22:58 UTC
+
+### Changes Made
+
+**1. Sessions Panel — Expand to See Messages (NEW)**
+- Added `GET /api/sessions/{session_id}/messages` endpoint — returns last N messages from a session file
+- Sessions are now **clickable** — click any session to expand and see the last 8 messages inline
+- Each message shows: role icon (👤 user / 🤖 assistant / 🔧 tool), role label, timestamp, content
+- Toggle click to collapse. Clicking another session collapses the previous one.
+- CSS: hover highlights session name in blue, expanded state gets tinted background
+- `HermesAdaptor.get_session_messages()` reads session JSON file directly, no auth needed
+
+**2. Skills Panel — Search/Filter (NEW)**
+- Added filter input to skills panel header — type to filter by name, description, or tags
+- Skills list now cached in `_skillsCatalog` global so filter re-renders without re-fetching
+- Filter is live (oninput, no submit needed)
+- Owner attribution shown when present (e.g. `by Maxi`, `by arnold`)
+- Empty state: "No skills match 'xyz'" vs "No skills found"
+
+### Current State
+- Service running on port 8420 (systemd, enabled) ✅
+- Git committed + pushed: `89ba58f` ✅
+- All endpoints verified: /api/ping ✅ /api/status ✅ /api/cron-jobs ✅ /api/sessions ✅ /api/skills-catalog ✅ /api/sessions/{id}/messages ✅
+- 20 skills cataloged, skills filter working
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **Memory graph panel** — 17 entities all "unknown" type; revisit when Hermes populates more
+2. **Morning briefing content** — improve quality/formatting
+3. **Session click → view full session** — currently limited to 8 messages; could paginate or load more
+4. **Skills invocation feedback** — clicking a skill in the panel feeds it to command bar (already working) but user has no confirmation; could show "Press Enter to invoke `!skill-name`" hint
+5. **Dependabot fixes** — 3 moderate GitHub vulnerabilities (low priority, no runtime impact)
+
+---
+
 ## Session Log — 2026-04-26 21:52 UTC
 
 ### Changes Made
