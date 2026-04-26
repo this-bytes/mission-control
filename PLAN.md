@@ -195,6 +195,47 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 05:56 UTC
+
+### Changes Made
+
+**Metrics Panel — SQLite-backed Live Metrics (NEW)**
+
+Backend:
+- `metrics.db` (SQLite) created in repo root — persists across restarts
+- Tracks: `commands`, `errors`, `events` counters with timestamps
+- `/api/metrics` endpoint: uptime, current counter values, 24h hourly timeseries bucketed from SQLite
+- Counters increment on: command execution, streaming errors, SSE event emissions
+- 2x2 metric card grid: Commands (cyan), Errors (red), Events (amber), Error Rate %
+
+Frontend:
+- New **Metrics** tab added to right column tab bar
+- **Uptime** display: shows `Xh Ym` or `Xd Xh Ym` format
+- **SINCE** timestamp showing service start time
+- **24-Hour Activity** sparkline: CSS bar chart, one bar per hour, cyan bars showing command count per hour
+- Error rate color-coded: green (<1%), amber (1-5%), red (>5%)
+- 30s auto-refresh alongside other panels
+
+Bug fixes:
+- Python `global` scoping: moved `_cmd_count`, `_err_count`, `_events_received` into helper functions (`_inc_cmd()`, `_inc_err()`, `_inc_events()`) — avoids global declaration issues in nested async generators
+- Event ring buffer rebinding bug: changed `_event_log = _event_log[-MAX:]` (rebinds name as local) to `del _event_log[:-MAX]` (in-place mutation) — fixes `cannot access local variable` error in `emit()`
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID fresh)
+- Git committed + pushed: `9f2d328` ✅
+- All endpoints verified: /api/ping ✅ /api/metrics ✅ /api/status ✅ /api/events/recent ✅
+- metrics.db: commands=1, errors=2 (from earlier test failures), events=1 tracked correctly
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Better streaming** — chunk_size=64 for faster token delivery
+4. **Panel drag-and-drop reorder** — bring back the drag-and-drop from the old version
+
+---
+
 ## Session Log — 2026-04-27 04:37 UTC
 
 ### Changes Made
