@@ -195,6 +195,31 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-26 21:52 UTC
+
+### Changes Made
+
+**Skills Catalog Populated (15 NEW SKILL.md files)**
+- 28 skills total in `~/.hermes/skills/`, but only 4 had `SKILL.md` frontmatter → only those 4 appeared in dashboard command palette
+- Created minimal frontmatter SKILL.md for 15 high-value skills: `anh-ops`, `homelab`, `github`, `mcp`, `autonomous-ai-agents`, `briefings`, `smart-home`, `productivity`, `software-development`, `research`, `security`, `email`, `media`, `creative`, `data-science`
+- `get_skills_catalog()` reads `~/.hermes/skills/<name>/SKILL.md` frontmatter to populate the catalog
+- Verified: 4 → 19 skills visible in dashboard command palette (previously 4, now 19)
+
+### Current State
+- Service running on port 8420 (systemd, enabled, uptime ~1h) ✅
+- Skills catalog: 19 skills visible (was 4, now includes anh-ops, github, homelab, briefings, mcp, etc.) ✅
+- Working tree clean — SKILL.md changes were to `~/.hermes/skills/` (outside git repo)
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **Skills panel in dashboard** — currently skills only visible in command palette; could add a dedicated "Skills" panel showing all 19 skills with descriptions and trigger hints
+2. **Memory graph panel** — 17 entities all "unknown" type; revisit when Hermes populates more
+3. **Morning briefing content** — improve quality/formatting
+4. **Dependabot fixes** — 3 moderate GitHub vulnerabilities (low priority)
+
+---
+
 ## Session Log — 2026-04-26 20:48 UTC
 
 ### Changes Made
