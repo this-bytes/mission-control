@@ -256,6 +256,16 @@ async def get_paperclip_goals():
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
+@app.get("/api/system-info")
+async def get_system_info():
+    """Server health: CPU, memory, disk, uptime."""
+    try:
+        info = hermes.get_system_info()
+        return {"ok": True, "data": info}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
 @app.get("/api/graph")
 async def get_graph():
     """Knowledge Graph: force-directed entity graph from memory_store.db."""

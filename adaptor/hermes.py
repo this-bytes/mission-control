@@ -457,6 +457,39 @@ class HermesAdaptor:
     # Reads the SQLite memory_store to construct a force-directed graph of
     # entities and facts. Powers the 🧠 Knowledge Graph panel.
 
+    # ── System Info ────────────────────────────────────────────────────────────
+    # Returns live server metrics: CPU, memory, disk. Uses psutil.
+
+    def get_system_info(self) -> dict:
+        """
+        Live server health: CPU %, memory %, disk %, uptime, load average.
+        """
+        import psutil
+        from datetime import datetime
+
+        mem = psutil.virtual_memory()
+        disk = psutil.disk_usage("/")
+        boot_time = datetime.fromtimestamp(psutil.boot_time())
+        uptime_sec = (datetime.now() - boot_time).total_seconds()
+
+        return {
+            "cpu_percent": psutil.cpu_percent(interval=0.5),
+            "cpu_count": psutil.cpu_count(),
+            "load_avg": list(psutil.getloadavg()) if hasattr(psutil, "getloadavg") else [0, 0, 0],
+            "memory_total_gb": round(mem.total / (1024 ** 3), 1),
+            "memory_used_gb": round(mem.used / (1024 ** 3), 1),
+            "memory_percent": mem.percent,
+            "disk_total_gb": round(disk.total / (1024 ** 3), 1),
+            "disk_used_gb": round(disk.used / (1024 ** 3), 1),
+            "disk_percent": disk.percent,
+            "uptime_sec": uptime_sec,
+            "boot_time": boot_time.isoformat(),
+        }
+
+    # ── Knowledge Graph ─────────────────────────────────────────────────────────
+    # Reads the SQLite memory_store to construct a force-directed graph of
+    # entities and facts. Powers the 🧠 Knowledge Graph panel.
+
     def get_knowledge_graph(self) -> dict:
         """
         Build nodes + edges from memory_store.db.
