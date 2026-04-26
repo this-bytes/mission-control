@@ -731,8 +731,30 @@
   /* ══════════════════════════════════════════════════════════════
      COMMAND BAR
   ══════════════════════════════════════════════════════════════ */
+  let _cmdHistory = [];
+  let _cmdHistoryIdx = -1;
+
   $('cmd-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') submitCmd();
+    if (e.key === 'Enter') {
+      if ($('cmd-input').value.trim()) {
+        _cmdHistory.unshift($('cmd-input').value.trim());
+        if (_cmdHistory.length > 50) _cmdHistory.pop();
+        _cmdHistoryIdx = -1;
+      }
+      submitCmd();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (_cmdHistory.length === 0) return;
+      _cmdHistoryIdx = Math.min(_cmdHistoryIdx + 1, _cmdHistory.length - 1);
+      $('cmd-input').value = _cmdHistory[_cmdHistoryIdx];
+      $('cmd-input').setSelectionRange(9999, 9999);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (_cmdHistoryIdx <= 0) { _cmdHistoryIdx = -1; $('cmd-input').value = ''; return; }
+      _cmdHistoryIdx--;
+      $('cmd-input').value = _cmdHistory[_cmdHistoryIdx];
+      $('cmd-input').setSelectionRange(9999, 9999);
+    }
   });
 
   async function submitCmd() {
