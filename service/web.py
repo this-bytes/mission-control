@@ -4,6 +4,7 @@ Serves the dashboard and proxies Hermes API.
 """
 import asyncio
 import json
+import sqlite3
 import time
 from pathlib import Path
 from datetime import datetime
@@ -23,6 +24,45 @@ CONFIG = json.loads((_ROOT_DIR / "config" / "settings.json").read_text())
 PORT = CONFIG.get("mission_control_port", 8420)
 HERMES_BASE = CONFIG.get("hermes_api_base", "http://127.0.0.1:9119")
 LOG_LEVEL = CONFIG.get("log_level", "info")
+
+# ─── Metrics DB ──────────────────────────────────────────────────────────────────
+_METRICS_DB = _ROOT_DIR / "metrics.db"
+_metrics_conn = sqlite3.connect(str(_METRICS_DB), check_same_thread=False)
+_metrics_conn.execute("""
+  CREATE TABLE IF NOT EXISTS metrics (
+    ts TEXT,
+    metric TEXT,
+    value REAL
+  )
+""")
+# Track our own process start time
+_MC_START_TS = datetime.now().isoformat()
+# In-memory counters — updated by helper functions below
+_cmd_count = 0
+_err_count = 0
+_events_received = 0
+
+def _record(metric: str, value: float):
+    _metrics_conn.execute(
+      "INSERT INTO metrics (ts, metric, value) VALUES (?, ?, ?)",
+      (datetime.now().isoformat(), metric, value)
+    )
+    _metrics_conn.commit()
+
+def _inc_cmd():
+    global _cmd_count
+    _cmd_count += 1
+    _record("commands", _cmd_count)
+
+def _inc_err():
+    global _err_count
+    _err_count += 1
+    _record("errors", _err_count)
+
+def _inc_events():
+    global _events_received
+    _events_received += 1
+    _record("events", _events_received)
 
 app = FastAPI(title="Mission Control", version="0.1.0")
 
@@ -46,16 +86,18 @@ _event_log: list[dict] = []  # recent events for /api/events/recent
 async def emit(event_type: str, data: dict):
     """Push an event to all SSE subscribers and append to the recent-event ring buffer."""
     entry = {"type": event_type, "data": data, "ts": datetime.now().isoformat()}
-    # Ring buffer: maintain last MAX_EVENT_LOG entries
+    # Ring buffer: maintain last MAX_EVENT_LOG entries (mutate in-place so _event_log stays module-scoped)
     _event_log.append(entry)
     if len(_event_log) > _MAX_EVENT_LOG:
-        _event_log = _event_log[-_MAX_EVENT_LOG:]
+        del _event_log[:-_MAX_EVENT_LOG]
     payload = json.dumps(entry)
     for q in _subscribers[:]:
         try:
             await q.put(payload)
         except Exception:
             pass
+    # Record metrics
+    _inc_events()
 
 
 # ─── SSE Stream ───────────────────────────────────────────────────────────────
@@ -234,6 +276,59 @@ async def get_skills_catalog():
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
+@app.get("/api/metrics")
+async def get_metrics(limit: int = 100):
+    """Mission Control uptime and history metrics from SQLite."""
+    try:
+        # Get latest values for counters
+        cur = _metrics_conn.execute("""
+            SELECT metric, value FROM metrics
+            WHERE metric IN ('commands','errors','events')
+            AND ts > datetime('now','-24 hours')
+            ORDER BY ts DESC
+            LIMIT 300
+        """)
+        rows = cur.fetchall()
+
+        # Latest snapshot per metric
+        latest = {}
+        for metric, value in rows:
+            if metric not in latest:
+                latest[metric] = value
+
+        # Time-series for sparklines (last 24h, 1h buckets)
+        cur = _metrics_conn.execute("""
+            SELECT
+              strftime('%Y-%m-%d %H:00', ts) as hour,
+              metric,
+              COUNT(*),
+              MAX(value)
+            FROM metrics
+            WHERE ts > datetime('now', '-24 hours')
+            GROUP BY hour, metric
+            ORDER BY hour ASC
+        """)
+        ts_rows = cur.fetchall()
+
+        # Uptime
+        start = datetime.fromisoformat(_MC_START_TS)
+        uptime_sec = (datetime.now() - start).total_seconds()
+
+        return {
+            "ok": True,
+            "data": {
+                "start_ts": _MC_START_TS,
+                "uptime_sec": uptime_sec,
+                "commands": latest.get("commands", _cmd_count),
+                "errors": latest.get("errors", _err_count),
+                "events": latest.get("events", _events_received),
+                "timeseries": ts_rows,
+            }
+        }
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
 @app.get("/api/history/search")
 async def search_history(q: str = "", limit: int = 10):
     """Full-text search across conversation history using FTS5."""
@@ -271,6 +366,7 @@ async def post_command(request: Request):
         content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
 
         await emit("command_executed", {"prompt": prompt[:80]})
+        _inc_cmd()
         return {
             "ok": True,
             "data": {
@@ -281,8 +377,10 @@ async def post_command(request: Request):
             }
         }
     except httpx.TimeoutException:
+        _inc_err()
         return JSONResponse({"ok": False, "error": "Hermes timed out after 60s"}, status_code=504)
     except Exception as e:
+        _inc_err()
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
@@ -299,6 +397,7 @@ async def post_command_stream(request: Request):
             return JSONResponse({"ok": False, "error": "empty prompt"}, status_code=400)
 
         await emit("command_executed", {"prompt": prompt[:80]})
+        _inc_cmd()
 
         async def stream_gen():
             try:
@@ -323,10 +422,12 @@ async def post_command_stream(request: Request):
                             except Exception:
                                 pass
             except Exception as e:
+                _inc_err()
                 yield {"event": "error", "data": str(e)}
 
         return EventSourceResponse(stream_gen())
     except Exception as e:
+        _inc_err()
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 

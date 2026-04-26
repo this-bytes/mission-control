@@ -605,6 +605,104 @@
       color: var(--muted);
     }
 
+    /* ── Metrics Panel ────────────────────────────────────── */
+    #panel-metrics {
+      padding: 0;
+      overflow-y: auto;
+    }
+    #metrics-body {
+      padding: 12px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #metrics-uptime {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .metrics-label {
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .metrics-value {
+      font-size: 14px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .metrics-value.green { color: var(--green); }
+    .metrics-value.cyan  { color: var(--cyan); }
+    .metrics-value.amber { color: var(--amber); }
+    .metrics-value.red   { color: var(--red); }
+    .metrics-value.muted { color: var(--muted); font-size: 11px; font-weight: 400; }
+    #metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .metric-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 10px 10px 8px;
+    }
+    .metric-card-label {
+      font-size: 8px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .metric-card-value {
+      font-size: 22px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .metric-card-value.cyan  { color: var(--cyan); }
+    .metric-card-value.amber { color: var(--amber); }
+    .metric-card-value.red   { color: var(--red); }
+    .metric-card-sub {
+      font-size: 9px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+    #metrics-since {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-top: 2px;
+      border-top: 1px solid var(--border);
+    }
+    #metrics-chart-wrap {
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }
+    .metrics-chart-label {
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    #metrics-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 48px;
+    }
+    .chart-bar {
+      flex: 1;
+      border-radius: 2px 2px 0 0;
+      min-width: 6px;
+      transition: height 0.3s;
+    }
+    .chart-bar.commands { background: var(--cyan); opacity: 0.7; }
+    .chart-bar.errors   { background: var(--red); opacity: 0.7; }
+    .chart-bar.events   { background: var(--amber); opacity: 0.5; }
+
     /* ── Command Palette ────────────────────────────────────── */
     #palette-overlay {
       position: fixed; inset: 0;
@@ -870,6 +968,7 @@
       <button class="tab" id="tab-history" onclick="switchTab('history')">History</button>
       <button class="tab" id="tab-paperclip" onclick="switchTab('paperclip')">Issues</button>
       <button class="tab" id="tab-skills" onclick="switchTab('skills')">Skills</button>
+      <button class="tab" id="tab-metrics" onclick="switchTab('metrics')">Metrics</button>
     </div>
 
     <!-- Graph -->
@@ -917,6 +1016,46 @@
       </div>
       <div id="skills-list">
         <div class="loading">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="tab-panel" id="panel-metrics">
+      <div id="metrics-body">
+        <div id="metrics-uptime">
+          <span class="metrics-label">UPTIME</span>
+          <span class="metrics-value green" id="m-uptime">—</span>
+        </div>
+        <div id="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-card-label">COMMANDS</div>
+            <div class="metric-card-value cyan" id="m-commands">—</div>
+            <div class="metric-card-sub" id="m-commands-rate">— cmd/hr</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-label">ERRORS</div>
+            <div class="metric-card-value red" id="m-errors">—</div>
+            <div class="metric-card-sub" id="m-errors-rate">— err/hr</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-label">EVENTS</div>
+            <div class="metric-card-value amber" id="m-events">—</div>
+            <div class="metric-card-sub" id="m-events-rate">— ev/hr</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-label">ERROR RATE</div>
+            <div class="metric-card-value" id="m-error-pct">—</div>
+            <div class="metric-card-sub">of commands</div>
+          </div>
+        </div>
+        <div id="metrics-since">
+          <span class="metrics-label">SINCE</span>
+          <span class="metrics-value muted" id="m-since">—</span>
+        </div>
+        <div id="metrics-chart-wrap">
+          <div class="metrics-chart-label">24-HOUR ACTIVITY</div>
+          <div id="metrics-chart"></div>
+        </div>
       </div>
     </div>
 
@@ -1853,6 +1992,65 @@ async function loadEvents() {
   renderEvents();
 }
 
+/* ══════════════════════════════════════════════════════════════
+   METRICS
+══════════════════════════════════════════════════════════════ */
+async function loadMetrics() {
+  const d = await api('/api/metrics');
+  if (!d.ok) return;
+  const m = d.data;
+
+  // Uptime
+  const up = m.uptime_sec || 0;
+  const days = Math.floor(up / 86400);
+  const hrs  = Math.floor((up % 86400) / 3600);
+  const mins = Math.floor((up % 3600) / 60);
+  $('m-uptime').textContent = days > 0
+    ? `${days}d ${hrs}h ${mins}m`
+    : hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+
+  // Since
+  if (m.start_ts) {
+    const d2 = new Date(m.start_ts);
+    $('m-since').textContent = d2.toLocaleDateString('en-AU', { hour12: false }) + ' ' + d2.toLocaleTimeString('en-AU', { hour12: false });
+  }
+
+  // Cards
+  const cmds  = m.commands || 0;
+  const errs  = m.errors   || 0;
+  const evts  = m.events   || 0;
+  const up_hr = Math.max(up / 3600, 0.1);
+  const cmdRate  = (cmds / up_hr).toFixed(1);
+  const errRate  = (errs / up_hr).toFixed(1);
+  const evtRate  = (evts / up_hr).toFixed(1);
+  const errPct   = cmds > 0 ? ((errs / cmds) * 100).toFixed(1) + '%' : '0%';
+
+  $('m-commands').textContent = cmds;
+  $('m-commands-rate').textContent = cmdRate + ' cmd/hr';
+  $('m-errors').textContent = errs;
+  $('m-errors-rate').textContent = errRate + ' err/hr';
+  $('m-events').textContent = evts;
+  $('m-events-rate').textContent = evtRate + ' ev/hr';
+  $('m-error-pct').textContent = errPct;
+  $('m-error-pct').style.color = errPct === '0%' ? 'var(--green)' : parseFloat(errPct) > 5 ? 'var(--red)' : 'var(--amber)';
+
+  // 24h sparkline bar chart
+  const ts = m.timeseries || [];
+  const maxCmd = Math.max(...ts.filter(r => r[1] === 'commands').map(r => r[2]), 1);
+  const hours = [];
+  for (let i = 23; i >= 0; i--) {
+    const h = new Date(Date.now() - i * 3600000);
+    const key = h.toISOString().slice(0, 13); // YYYY-MM-DDTHH
+    const row = ts.find(r => r[0] === key);
+    hours.push({ key, cmd: row && row[1] === 'commands' ? row[2] : 0 });
+  }
+  const chartEl = $('metrics-chart');
+  chartEl.innerHTML = hours.map(h => {
+    const pct = h.cmd > 0 ? Math.max((h.cmd / maxCmd) * 100, 8) : 0;
+    return `<div class="chart-bar commands" style="height:${pct}%" title="${h.key.slice(-5)}: ${h.cmd}cmds"></div>`;
+  }).join('');
+}
+
 function renderEvents() {
   const list = $('events-list');
   if (_eventLog.length === 0) {
@@ -1950,7 +2148,7 @@ document.addEventListener('keydown', e => {
    BOOT
 ══════════════════════════════════════════════════════════════ */
 async function boot() {
-  await Promise.all([loadStatus(), loadSessions(), loadCrons(), loadBriefing(), loadSkills(), loadEvents()]);
+  await Promise.all([loadStatus(), loadSessions(), loadCrons(), loadBriefing(), loadSkills(), loadEvents(), loadMetrics()]);
   await Promise.all([loadGraph(), loadIssues(''), loadGoals()]);
   resizeCanvas();
   connectSSE();
@@ -1962,6 +2160,7 @@ async function boot() {
   setInterval(loadSessions, 30000);
   setInterval(loadCrons, 30000);
   setInterval(loadBriefing, 60000);
+  setInterval(loadMetrics, 30000);
 }
 
 window.addEventListener('resize', () => { resizeCanvas(); });
