@@ -195,6 +195,34 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-26 13:00 UTC
+
+### Changes Made
+
+**Command history localStorage persistence (DONE)**
+- Commands now persist across page reloads via `localStorage.setItem('mc_cmd_history', ...)`
+- Loaded on page init: `JSON.parse(localStorage.getItem('mc_cmd_history') || '[]')`
+- Graceful fallback: wrapped in `try/catch` in case localStorage is blocked
+- Added "Clear command history" action to command palette (🗑 icon) — wipes localStorage + in-memory array
+- No backend changes needed — fully client-side
+
+### Current State
+- Service running on port 8420 (systemd) ✅
+- All endpoints verified ✅
+- Git committed + pushed: dbf883a
+- GitHub Dependabot: 3 moderate vulnerabilities (low priority — `npm audit fix` / `pip audit` available)
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **Token usage display** — sessions.json has `total_tokens/input_tokens/output_tokens` fields but they're all 0; either Hermes doesn't populate them or we need to read from session .jsonl files instead
+2. **Memory graph panel** — force-directed D3 graph of Hermes memory (entities from memory_store.db)
+3. **Panel drag-to-reorder** — customize dashboard layout via drag/drop
+4. **Morning briefing panel polish** — show briefing content more prominently, add "regenerate" button
+5. **Dependabot fixes** — run `npm audit fix` or `pip audit` to resolve the 3 moderate GitHub vulnerabilities
+
+---
+
 ## Session Log — 2026-04-26 07:30 UTC
 
 ### Bug Fixes
