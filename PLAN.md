@@ -322,6 +322,34 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 4. **Full context panel** — show active conversations, recent learnings
 5. **Better cron job display** — show last run status, error messages
 
+## Session Log — 2026-04-26 11:55 UTC
+
+### Changes Made
+
+**Command Bar History (NEW)**
+- Up arrow: navigate to previous commands (most recent first)
+- Down arrow: navigate forward
+- Stores last 50 commands in memory (session-scoped, no persistence)
+- Small but high-impact usability fix for daily use
+
+### Current State
+- Service running on port 8420 (systemd, enabled, survives reboots) ✅
+- All 13 API endpoints verified: ping ✅ status ✅ cron-jobs ✅ paperclip/issues ✅ paperclip/goals ✅ briefing ✅ sessions ✅ graph ✅ skills-catalog ✅ history/search ✅ command ✅ streaming ✅
+- Git committed: b3e4e56 (command history)
+- Service uptime: fresh restart (2 min ago)
+- GitHub pushed: b3e4e56
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **Session token/cost display** — read `last_prompt_tokens` from session files and show in Sessions panel
+2. **Command history localStorage persistence** — persist command history across page reloads
+3. **Memory graph panel improvements** — node type coloring, force spread tuning
+4. **Panel drag-to-reorder** — customize dashboard layout
+5. **GitHub vulnerabilities** — 3 moderate Dependabot alerts on this-bytes/mission-control (low priority, run `npm audit fix` or `pip audit`)
+
+---
+
 ## blockers
 - [x] ~~Hermes API endpoint and auth~~ — UPDATED: gateway REST API (port 9119) was dropped in a recent Hermes version. The OpenAI-compatible API server runs on port 8642. Status comes from `GET /health/detailed` on 8642. Cron jobs are read directly from `~/.hermes/cron/jobs.json`. No auth needed locally. `hermes_api_base` in settings.json updated to `http://127.0.0.1:8642`.
 - [x] ~~Confirm Hermes API endpoint and auth mechanism~~ — CLOSED (see above)
