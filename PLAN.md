@@ -195,6 +195,46 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 07:00 UTC
+
+### Changes Made
+
+**Server Info Panel — CPU/Mem/Disk Live Metrics (NEW)**
+
+Backend:
+- `GET /api/system-info` endpoint — returns live server health via psutil
+- `HermesAdaptor.get_system_info()` in `adaptor/hermes.py`: CPU %, memory %, disk %, load average, uptime, boot time
+- psutil==6.1.0 added to `requirements.txt` (installed in venv)
+
+Frontend (Server tab in right column):
+- New **Server** tab added to tab bar (after Metrics)
+- Three horizontal fill bars: **CPU**, **MEM**, **DISK** with color-coded thresholds
+  - Green (0-70%) → Amber (70-85%) → Red (85%+)
+  - Numeric % displayed right of each bar
+- Below bars, key/value metadata rows:
+  - **LOAD** — 1/5/15 min load averages + CPU core count
+  - **UPTIME** — formatted as `Xd Xh Xm` or `Xh Xm`
+  - **BOOTED** — boot timestamp in local datetime
+  - **DISK** — `used / total GB`
+  - **MEM** — `used / total GB`
+- 30-second auto-refresh alongside other panels
+- Bar widths and colors transition smoothly on each update
+
+### Current State
+- Service running on port 8420 via systemd ✅ (fresh restart)
+- Git committed + pushed: `247d54b` ✅
+- All endpoints verified: /api/ping ✅ /api/system-info ✅ /api/status ✅ /api/metrics ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Morning briefing quality** — content correct; could improve formatting further
+4. **Better streaming** — chunk_size=64 for faster token delivery
+
+---
+
 ## Session Log — 2026-04-27 05:56 UTC
 
 ### Changes Made
