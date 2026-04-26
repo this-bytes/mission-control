@@ -420,6 +420,9 @@
     .detail-rel { color: var(--amber); font-size: 9px; }
     .detail-rel-label { color: var(--muted); }
     .detail-empty { color: var(--muted); font-size: 10px; }
+    .clickable-entity { cursor: pointer; color: var(--cyan); }
+    .clickable-entity:hover { text-decoration: underline; color: var(--text-bright); }
+    .detail-preview { font-size: 9px; color: var(--muted); margin-top: 1px; padding-left: 8px; line-height: 1.4; }
 
     /* ── History Search ─────────────────────────────────────── */
     #search-bar {
@@ -1412,27 +1415,59 @@ canvas.addEventListener('mousemove', e => {
   canvas.style.cursor = _hoveredNode ? 'pointer' : 'grab';
 });
 
+// ── Entity detail panel ──────────────────────────────────────
+let _selectedEntity = null; // currently selected entity for drill-down
+
+function renderEntityDetail(entityId) {
+  const detail = $('graph-detail');
+  const entity = _graph ? _graph.nodes.find(n => n.id === entityId) : null;
+  if (!entity) return;
+  _selectedEntity = entity;
+  const edges = (_graphData.edges || []).filter(e => e.source === entityId || e.target === entityId);
+  let html = `<div class="detail-entity">${esc(entity.name)}</div>`;
+  html += `<div class="detail-type">${esc(entity.type || 'concept')} · ${edges.length} connection${edges.length !== 1 ? 's' : ''}</div>`;
+  if (_selectedEntity && _selectedEntity.id === entityId) {
+    // Full fact previews for selected entity
+    for (const edge of edges.slice(0, 12)) {
+      const other = edge.source === entityId ? edge.target : edge.source;
+      const otherNode = _graph.nodes.find(n => n.id === other);
+      const label = otherNode ? otherNode.name : other;
+      const preview = edge.fact_preview || '';
+      html += `<div class="detail-fact">`;
+      html += `<span class="detail-rel">${esc(edge.label || '→')} </span>`;
+      html += `<span class="detail-rel-label clickable-entity" data-entity-id="${esc(other)}">${esc(label)}</span>`;
+      html += `</div>`;
+      if (preview) html += `<div class="detail-preview">${esc(preview.slice(0, 120))}${preview.length > 120 ? '…' : ''}</div>`;
+    }
+  } else {
+    // Compact: just connection names
+    for (const edge of edges.slice(0, 8)) {
+      const other = edge.source === entityId ? edge.target : edge.source;
+      const otherNode = _graph.nodes.find(n => n.id === other);
+      const label = otherNode ? otherNode.name : other;
+      html += `<div class="detail-fact">`;
+      html += `<span class="detail-rel">${esc(edge.label || '→')} </span>`;
+      html += `<span class="detail-rel-label clickable-entity" data-entity-id="${esc(other)}">${esc(label)}</span>`;
+      html += `</div>`;
+    }
+  }
+  if (edges.length === 0) html += `<div class="detail-empty" style="margin-top:6px;">No connections yet</div>`;
+  detail.innerHTML = html;
+}
+
 canvas.addEventListener('click', () => {
   if (!_graph || !_hoveredNode) return;
-  const detail = $('graph-detail');
-  const related = (_graphData.edges || []).filter(e => e.source === _hoveredNode.id || e.target === _hoveredNode.id);
-  let html = `<div class="detail-entity">${esc(_hoveredNode.name)}</div>`;
-  html += `<div class="detail-type">${esc(_hoveredNode.type || 'concept')} · ${related.length} connections</div>`;
-  for (const edge of related.slice(0, 8)) {
-    const other = edge.source === _hoveredNode.id ? edge.target : edge.source;
-    const otherNode = _graph.nodes.find(n => n.id === other);
-    const label = otherNode ? otherNode.name : other;
-    html += `<div class="detail-fact">`;
-    html += `<span class="detail-rel">${esc(edge.label || '→')} </span>`;
-    html += `<span class="detail-rel-label">${esc(label)}</span>`;
-    if (edge.fact_preview) html += `<div style="font-size:9px;color:var(--muted);margin-top:1px;padding-left:8px;">${esc(edge.fact_preview.slice(0,100))}…</div>`;
-    html += `</div>`;
-  }
-  if (related.length === 0) html += `<div class="detail-empty" style="margin-top:6px;">No connections yet</div>`;
-  detail.innerHTML = html;
-
+  renderEntityDetail(_hoveredNode.id);
   // Save position
   _nodePositions[_hoveredNode.id] = { x: _hoveredNode.x, y: _hoveredNode.y };
+});
+
+// Clicking a connection name in detail panel drills into that entity
+$('graph-detail').addEventListener('click', e => {
+  const span = e.target.closest('.clickable-entity');
+  if (!span) return;
+  const entityId = span.dataset.entityId;
+  if (entityId) renderEntityDetail(entityId);
 });
 
 /* ══════════════════════════════════════════════════════════════

@@ -195,6 +195,33 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 00:21 UTC
+
+### Bug Fixed
+
+**Briefing Panel — Wrong Content (FIXED)**
+- Root cause: `get_briefing()` grabbed the most recently modified `session_cron_*` file by mtime
+- Problem: heavy cron churn (new session every 5 min) pushed the actual morning briefing (21:00 UTC, session `477d9b0fce90`) to position 22+ — outside the `[:20]` scan window
+- Fix 1: Added filter for `briefing-morning` skill in first user message — only accepts genuine morning briefing sessions
+- Fix 2: Expanded scan from `[:20]` → `[:50]` to cover cron churn
+- Morning briefing now correctly shows `cron_477d9b0fce90_20260426_210005` with today's pending items
+
+### Current State
+- Service running on port 8420 via systemd (PID 100738, fresh restart) ✅
+- Git committed + pushed: `85a04e6` ✅
+- All endpoints verified: /api/ping ✅ /api/status ✅ /api/cron-jobs ✅ /api/sessions ✅ /api/briefing ✅ (now returns real morning brief)
+- Briefing panel shows: `🌅 **MORNING BRIEF — 2026-04-27**` with `🔴 0 items need you directly, 🟡 1 item waiting on external: Google Workspace OAuth`
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **Morning briefing content quality** — briefing now correct; could improve formatting/sections
+2. **Memory graph panel** — 17 entities all "unknown" type; revisit when Hermes populates more
+3. **Dependabot fixes** — 3 moderate GitHub vulnerabilities (low priority, no runtime impact)
+4. **Token usage display** — `sessions.json` has `total_tokens=0` always; Hermes limitation, not fixable here
+
+---
+
 ## Session Log — 2026-04-26 22:58 UTC
 
 ### Changes Made
