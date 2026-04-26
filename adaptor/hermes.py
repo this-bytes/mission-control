@@ -351,9 +351,10 @@ class HermesAdaptor:
             cron_sessions.sort(key=lambda x: x.stat().st_mtime, reverse=True)
 
             # Look for morning briefing in recent cron sessions.
-            # Scan up to 50 to handle heavy cron churn (new sessions every 5 min).
-            # Morning briefing (21:00 UTC) typically sits at position 20-30.
-            for session_file in cron_sessions[:50]:
+            # Scan up to 120 to handle heavy cron churn (new sessions every 5 min).
+            # Morning briefing (21:00 UTC) typically sits at position 50-90 due to
+            # other crons firing every 5 min between 21:00 and the morning scan.
+            for session_file in cron_sessions[:120]:
                 try:
                     with session_file.open() as f:
                         data = json.load(f)
@@ -368,7 +369,13 @@ class HermesAdaptor:
                             (m.get("content", "") for m in msgs if m.get("role") == "user"),
                             ""
                         )
-                        if '"briefing-morning"' not in first_user:
+                        # Accept if first user message invokes briefing-morning skill,
+                        # OR if the session file belongs to the morning-briefing cron job.
+                        is_briefing_session = (
+                            '"briefing-morning"' in first_user
+                            or "477d9b0fce90" in session_file.stem  # morning-briefing cron job
+                        )
+                        if not is_briefing_session:
                             continue
                         # Get last assistant message as the briefing
                         for m in reversed(msgs):
