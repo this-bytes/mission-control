@@ -195,6 +195,32 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-26 20:48 UTC
+
+### Changes Made
+
+**Dead `/api/skills` stub removed**
+- `get_skills()` in `hermes.py` was an async stub returning `[]`
+- The working implementation is `get_skills_catalog()` which reads `~/.hermes/skills/*/SKILL.md` frontmatter
+- Frontend already correctly used `/api/skills-catalog` (wired to `get_skills_catalog()`)
+- Removed the dead `/api/skills` endpoint from `web.py`
+- Confirmed 4 skills with SKILL.md files: dogfood, fitness-coach, fitness-coach-mode, workspace-dispatch
+
+### Current State
+- Service running on port 8420 (systemd, enabled) ✅
+- Skills catalog: 4 skills visible in dashboard ✅
+- Git committed + pushed: `7b41fe8` ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **Skills panel populate** — 4 skills found but most others (anh-ops, github, homelab, etc.) have no SKILL.md; add minimal frontmatter to high-value skills to make them visible
+2. **Memory graph panel** — 17 entities all "unknown" type; revisit when Hermes populates more
+3. **Morning briefing content** — improve quality/formatting
+4. **Dependabot fixes** — 3 moderate GitHub vulnerabilities (low priority)
+
+---
+
 ## Session Log — 2026-04-26 19:40 UTC
 
 ### Changes Made
