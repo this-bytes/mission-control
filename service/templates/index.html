@@ -731,7 +731,7 @@
   /* ══════════════════════════════════════════════════════════════
      COMMAND BAR
   ══════════════════════════════════════════════════════════════ */
-  let _cmdHistory = [];
+  let _cmdHistory = JSON.parse(localStorage.getItem('mc_cmd_history') || '[]');
   let _cmdHistoryIdx = -1;
 
   $('cmd-input').addEventListener('keydown', e => {
@@ -740,6 +740,7 @@
         _cmdHistory.unshift($('cmd-input').value.trim());
         if (_cmdHistory.length > 50) _cmdHistory.pop();
         _cmdHistoryIdx = -1;
+        try { localStorage.setItem('mc_cmd_history', JSON.stringify(_cmdHistory.slice(0, 50))); } catch(e) {}
       }
       submitCmd();
     } else if (e.key === 'ArrowUp') {
@@ -1189,6 +1190,7 @@
       { icon: '⏭', label: 'Trigger morning briefing', sublabel: 'Run the morning-briefing cron now', action: () => { triggerCronByName('morning-briefing'); closePalette(); }, tags: ['cron'] },
       { icon: '📡', label: 'View live feed', sublabel: 'See recent events', action: () => { document.querySelector('#feed-list').scrollTop = 0; closePalette(); }, tags: ['feed'] },
       { icon: '🔄', label: 'Refresh all panels', sublabel: 'Reload status, sessions, graph', action: () => { boot(); closePalette(); }, tags: ['refresh'] },
+      { icon: '🗑', label: 'Clear command history', sublabel: 'Wipe stored command history', action: () => { localStorage.removeItem('mc_cmd_history'); _cmdHistory = []; _cmdHistoryIdx = -1; closePalette(); addFeed('system', 'Command history cleared'); }, tags: ['clear'] },
     ];
   }
 
