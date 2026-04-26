@@ -169,12 +169,15 @@
     }
     .session-item {
       padding: 5px 0; border-bottom: 1px solid var(--border);
-      font-size: 0.72rem;
+      font-size: 0.72rem; cursor: pointer;
     }
     .session-item:last-child { border-bottom: none; }
+    .session-item:hover .session-name { color: var(--accent); }
+    .session-expanded { background: rgba(59,130,246,0.05); margin: 0 -10px; padding: 0 10px; border-radius: 4px; }
     .session-platform { color: var(--muted); font-size: 0.62rem; text-transform: uppercase; }
     .session-name { color: var(--text); font-weight: 500; }
     .session-meta { color: var(--muted); font-size: 0.62rem; }
+    .session-detail { margin-top: 6px; }
 
     /* ── Cron Jobs Panel ────────────────────────────────── */
     #crons-panel {
@@ -588,7 +591,10 @@
 
     <!-- Skills Panel -->
     <div class="tab-panel" id="panel-skills">
-      <div class="tab-panel-header">Available skills — click to invoke</div>
+      <div class="tab-panel-header">
+        Available skills
+        <input id="skills-filter" type="text" placeholder="Filter skills…" oninput="filterSkillsList()" style="margin-left:8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:0.62rem;color:var(--text);width:140px;" />
+      </div>
       <div id="skills-list">Loading...</div>
     </div>
 
@@ -712,15 +718,60 @@
       const name = (s.display_name || s.key || '—').length > 50
         ? (s.display_name || s.key || '—').slice(0, 50) + '…'
         : (s.display_name || s.key || '—');
-      return `<div class="session-item">
+      return `<div class="session-item" id="session-${s.session_id}" data-session="${s.session_id}" onclick="expandSession('${s.session_id}', this)">
         <div class="session-platform">${icon} ${s.platform}</div>
         <div class="session-name">${name}</div>
         <div class="session-meta">${s.message_count || 0} msgs ${tokens} · ${updated}</div>
+        <div class="session-detail" id="session-detail-${s.session_id}" style="display:none;"></div>
       </div>`;
     }).join('');
     // Footnote for approximate token counts
     if (d.data.some(s => s.last_prompt_tokens && !s.total_tokens)) {
       list.innerHTML += '<p style="font-size:0.6rem;color:var(--muted);margin-top:6px">* prompt tokens (total not reported by Hermes)</p>';
+    }
+  }
+
+  let _expandedSession = null;
+  async function expandSession(sessionId, el) {
+    const detail = $('session-detail-' + sessionId);
+    if (!detail) return;
+    if (_expandedSession === sessionId) {
+      // Collapse
+      detail.style.display = 'none';
+      el.classList.remove('session-expanded');
+      _expandedSession = null;
+      return;
+    }
+    // Collapse previous
+    if (_expandedSession) {
+      const prev = $('session-detail-' + _expandedSession);
+      const prevEl = $('session-' + _expandedSession);
+      if (prev) prev.style.display = 'none';
+      if (prevEl) prevEl.classList.remove('session-expanded');
+    }
+    detail.style.display = 'block';
+    detail.innerHTML = '<span style="font-size:0.65rem;color:var(--yellow)">Loading…</span>';
+    el.classList.add('session-expanded');
+    _expandedSession = sessionId;
+    // Fetch messages
+    try {
+      const d = await api(`/api/sessions/${sessionId}/messages?limit=8`);
+      if (!d.ok || !d.data || d.data.length === 0) {
+        detail.innerHTML = '<span style="font-size:0.65rem;color:var(--muted)">No messages</span>';
+        return;
+      }
+      detail.innerHTML = d.data.map(m => {
+        const roleColor = m.role === 'user' ? 'var(--accent)' : m.role === 'assistant' ? 'var(--green)' : 'var(--muted)';
+        const roleIcon = m.role === 'user' ? '👤' : m.role === 'assistant' ? '🤖' : '🔧';
+        const ts = m.timestamp ? new Date(m.timestamp * 1000).toISOString().slice(11, 16) : '';
+        const content = m.content ? m.content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') : '<em style="color:var(--muted)">(empty)</em>';
+        return `<div style="margin:4px 0;padding:4px 6px;background:var(--surface2);border-radius:4px;font-size:0.62rem;line-height:1.4;">
+          <span style="color:${roleColor};font-weight:600;">${roleIcon} ${m.role}</span> ${ts ? `<span style="color:var(--muted);font-size:0.58rem;">${ts}</span>` : ''}
+          <div style="color:var(--text);margin-top:2px;white-space:pre-wrap;">${content}</div>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      detail.innerHTML = '<span style="font-size:0.65rem;color:var(--red)">Failed to load</span>';
     }
   }
 
@@ -868,6 +919,7 @@
   ══════════════════════════════════════════════════════════════ */
   let _cmdHistory = JSON.parse(localStorage.getItem('mc_cmd_history') || '[]');
   let _cmdHistoryIdx = -1;
+  let _skillsCatalog = [];  // cached skills for filter
 
   $('cmd-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') {
@@ -1194,17 +1246,31 @@
   ══════════════════════════════════════════════════════════════ */
   async function loadSkills() {
     const d = await api('/api/skills-catalog');
+    _skillsCatalog = d.ok && d.data ? d.data : [];
+    filterSkillsList();
+  }
+
+  function filterSkillsList() {
     const list = $('skills-list');
-    if (!d.ok || !d.data || d.data.length === 0) {
-      list.innerHTML = '<p style="font-size:0.72rem;color:var(--muted)">No skills found</p>';
+    const q = ($('skills-filter') || {}).value || '';
+    const skills = _skillsCatalog || [];
+    const filtered = q
+      ? skills.filter(s =>
+          s.name.toLowerCase().includes(q.toLowerCase()) ||
+          (s.description || '').toLowerCase().includes(q.toLowerCase()) ||
+          (s.tags || '').toLowerCase().includes(q.toLowerCase()))
+      : skills;
+    if (filtered.length === 0) {
+      list.innerHTML = `<p style="font-size:0.72rem;color:var(--muted)">${q ? 'No skills match "' + q + '"' : 'No skills found'}</p>`;
       return;
     }
-    list.innerHTML = d.data.map(s => {
+    list.innerHTML = filtered.map(s => {
       const tags = s.tags ? s.tags.replace(/[\[\]]/g, '').split(',').map(t =>
         `<span class="skill-tag">${t.trim()}</span>`
       ).join('') : '';
+      const owner = s.owner ? `<span style="float:right;font-size:0.58rem;color:var(--muted);">by ${s.owner}</span>` : '';
       return `<div class="skill-item" onclick="invokeSkill('${s.name}')">
-        <div class="skill-name">${s.name}</div>
+        <div class="skill-name">${s.name}${owner}</div>
         <div class="skill-desc">${s.description || s.trigger || '—'}</div>
         ${tags ? `<div class="skill-tags">${tags}</div>` : ''}
       </div>`;

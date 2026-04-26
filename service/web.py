@@ -161,6 +161,16 @@ async def get_briefing():
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
+@app.get("/api/sessions/{session_id}/messages")
+async def get_session_messages(session_id: str, limit: int = 8):
+    """Recent messages from a specific session — click to expand a session."""
+    try:
+        msgs = await hermes.get_session_messages(session_id, limit=min(limit, 20))
+        return {"ok": True, "data": msgs, "session_id": session_id}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
 @app.get("/api/sessions")
 async def get_sessions():
     """Active sessions across all platforms."""

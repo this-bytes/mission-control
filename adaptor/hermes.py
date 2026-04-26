@@ -301,6 +301,32 @@ class HermesAdaptor:
         result.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
         return result[:10]  # top 10 recent
 
+    async def get_session_messages(self, session_id: str, limit: int = 8) -> list[dict]:
+        """
+        Return the most recent 'limit' messages from a session file.
+        Each message: {role, content, timestamp}
+        """
+        session_file = self._hermes_home / "sessions" / f"session_{session_id}.json"
+        if not session_file.exists():
+            return []
+
+        try:
+            with session_file.open() as f:
+                data = json.load(f)
+            messages = data.get("messages", [])
+            # Take the last 'limit' messages, strip long content
+            recent = []
+            for m in messages[-limit:]:
+                content = m.get("content", "")
+                recent.append({
+                    "role": m.get("role", "?"),
+                    "content": content[:500] + ("..." if len(content) > 500 else ""),
+                    "timestamp": m.get("timestamp", ""),
+                })
+            return recent
+        except Exception:
+            return []
+
     async def get_briefing(self) -> dict:
         """
         Morning briefing: get the latest morning briefing cron run output
