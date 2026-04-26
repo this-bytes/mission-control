@@ -330,6 +330,30 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 - [x] ~~Discover how to send prompts to Hermes~~ — OpenAI-compatible API at port 8642, no auth required locally
 - [x] ~~GitHub backup~~ — SSH key works, `git push` succeeds. Repo at `this-bytes/mission-control` (git remote: `git@github.com:this-bytes/mission-control.git`). Backup working ✅
 
+## Session Log — 2026-04-26 10:50 UTC
+
+### Changes Made
+
+**Paperclip Issues + Goals Panel (NEW)**
+- `HermesAdaptor.get_paperclip_issues()` + `get_paperclip_goals()` — query Paperclip REST API at `10.87.1.201:3100` using session cookie auth
+- `GET /api/paperclip/issues` — returns up to 20 issues sorted by updatedAt desc, filterable by `?status=blocked,in_progress`
+- `GET /api/paperclip/goals` — returns up to 20 goals
+- **New Issues tab** in right column: shows title, color-coded status badge (🔴 blocked / 🔵 in_progress / 🟢 open), last updated date, labels
+- **Filter buttons**: All / Blocked / In Progress with active styling
+- **Goals sub-panel** at bottom: shows title + status for top goals
+- 60s auto-refresh on both
+- Fixed: `urllib.request` and `ssl` modules were not imported in `hermes.py` — added to imports
+
+### Current State
+- Service running on port 8420 (systemd, enabled, survives reboots) ✅
+- All 12 API endpoints verified: ping ✅ status ✅ cron-jobs ✅ paperclip/issues ✅ paperclip/goals ✅ briefing ✅ sessions ✅ graph ✅ skills-catalog ✅ history/search ✅ command ✅ streaming ✅
+- Paperclip API reachable at 10.87.1.201:3100 ✅
+- 20 issues, 9 goals visible in dashboard
+- Git committed: 8e4e03c (Paperclip panel)
+- Running: systemd managed service (PID 57634)
+
+### No Blockers
+
 ## Session Log — 2026-04-26 10:15 UTC
 
 ### Changes Made
