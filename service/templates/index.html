@@ -683,20 +683,53 @@
       font-size: 9px;
     }
 
-    /* ── Live Feed (mini) ───────────────────────────────────── */
-    #feed-mini {
-      font-size: 9px;
-      color: var(--muted);
-      overflow: hidden;
-      height: 20px;
-      padding: 0 12px;
+    /* ── Live Feed ────────────────────────────────────────── */
+    #events-panel {
       display: flex;
-      align-items: center;
-      gap: 6px;
+      flex-direction: column;
       border-top: 1px solid var(--border);
       flex-shrink: 0;
+      height: 180px;
     }
-    .feed-entry { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #events-panel .sec-header {
+      height: 26px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+      padding: 0 12px;
+    }
+    #events-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0;
+    }
+    .event-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 3px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 9px;
+      line-height: 1.4;
+    }
+    .event-row:last-child { border-bottom: none; }
+    .event-time { color: var(--muted); flex-shrink: 0; width: 48px; font-size: 8px; padding-top: 1px; }
+    .event-badge {
+      flex-shrink: 0;
+      padding: 0 4px;
+      border-radius: 2px;
+      font-size: 8px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .event-badge.platform_change { background: rgba(0,180,212,0.15); color: var(--cyan); }
+    .event-badge.cron_triggered { background: rgba(0,230,118,0.12); color: var(--green); }
+    .event-badge.command_executed { background: rgba(245,166,35,0.12); color: var(--amber); }
+    .event-badge.error { background: rgba(239,68,68,0.15); color: var(--red); }
+    .event-badge.system { background: var(--surface3); color: var(--muted); }
+    .event-badge.default { background: var(--surface3); color: var(--muted); }
+    .event-msg { color: var(--text); flex: 1; word-break: break-all; }
+    .event-empty { color: var(--muted); font-size: 9px; padding: 12px; text-align: center; }
     .feed-entry .type { font-weight: 600; margin-right: 4px; }
     .feed-entry.cmd .type { color: var(--cyan); }
     .feed-entry.cron .type { color: var(--amber); }
@@ -815,13 +848,21 @@
         <input id="cmd-input" type="text" placeholder="Ask Hermes, or type /help for commands..." autocomplete="off" />
       </div>
     </div>
-    <div id="feed-mini">
-      <span style="color:var(--muted);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;flex-shrink:0;">Feed</span>
-      <div id="mini-feed" style="display:flex;gap:12px;overflow:hidden;"></div>
+    <!-- Events -->
+    <div id="events-panel">
+      <div class="sec-header">
+        <span class="title">Events</span>
+        <div class="actions">
+          <button class="sec-btn" onclick="loadEvents()" title="Refresh">&#8635;</button>
+        </div>
+      </div>
+      <div id="events-list">
+        <div class="event-empty">Loading...</div>
+      </div>
     </div>
   </div>
 
-  <!-- ── RIGHT COLUMN ──────────────────────────────────────── -->
+  <!-- ── RIGHT COLUMN ─────────────────────────────────────── -->
   <div id="right-col">
 
     <div id="tab-bar">
@@ -953,13 +994,9 @@ function updateConn(ok) {
   else { dot.className = 'conn-dot dead'; label.textContent = 'Offline'; }
 }
 
-/* ── Mini feed ────────────────────────────────────────── */
+/* ── Legacy bridge: addMiniFeed -> addEvent ──────────────────── */
 function addMiniFeed(type, msg) {
-  feedEvents.unshift({ type, msg, time: new Date().toLocaleTimeString('en-US', { hour12: false }) });
-  if (feedEvents.length > 8) feedEvents.pop();
-  $('mini-feed').innerHTML = feedEvents.slice(0, 5).map(e =>
-    `<div class="feed-entry ${e.type}"><span class="type">${e.type}</span>${esc(e.msg)}</div>`
-  ).join('');
+  addEvent({ type, data: { text: msg }, ts: new Date().toISOString() });
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1806,6 +1843,59 @@ function paletteKeydown(e) {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   LIVE EVENTS PANEL
+══════════════════════════════════════════════════════════════ */
+let _eventLog = [];  // ring buffer of event entries for the panel
+
+async function loadEvents() {
+  const d = await api('/api/events/recent?limit=100');
+  _eventLog = d.ok && d.data ? d.data : [];
+  renderEvents();
+}
+
+function renderEvents() {
+  const list = $('events-list');
+  if (_eventLog.length === 0) {
+    list.innerHTML = '<div class="event-empty">No events yet</div>';
+    return;
+  }
+  list.innerHTML = _eventLog.map(ev => {
+    const ts = ev.ts ? new Date(ev.ts).toLocaleTimeString('en-AU', { hour12: false }) : '';
+    const badge = ev.type.replace(/_/g, ' ');
+    const data = ev.data || {};
+    let msg = '';
+    if (ev.type === 'platform_change') {
+      const changed = Object.keys(data.changed_platforms || {});
+      msg = changed.map(k => `${k}: ${data.changed_platforms[k]}`).join(', ');
+    } else if (ev.type === 'cron_triggered') {
+      msg = `Cron triggered: ${data.job_id || '?'}`;
+    } else if (ev.type === 'command_executed') {
+      msg = `Command: ${data.prompt || ''}`;
+    } else if (ev.type === 'error') {
+      msg = `${data.source || 'error'}: ${data.msg || JSON.stringify(data)}`;
+    } else if (ev.type === 'system') {
+      msg = JSON.stringify(data).slice(0, 80);
+    } else {
+      msg = JSON.stringify(data).slice(0, 80);
+    }
+    return `<div class="event-row">
+      <span class="event-time">${ts}</span>
+      <span class="event-badge ${ev.type}">${badge}</span>
+      <span class="event-msg">${esc(msg)}</span>
+    </div>`;
+  }).join('');
+  list.scrollTop = list.scrollHeight;  // auto-scroll to latest
+}
+
+function addEvent(entry) {
+  // Add a single event entry (called by SSE handler) — prepend to log
+  _eventLog.push(entry);
+  if (_eventLog.length > 100) _eventLog.shift();
+  // Only re-render if panel is visible (it's always visible in the left col)
+  renderEvents();
+}
+
+/* ══════════════════════════════════════════════════════════════
    SSE
 ══════════════════════════════════════════════════════════════ */
 let eventSource;
@@ -1818,7 +1908,7 @@ function connectSSE() {
       const m = JSON.parse(e.data);
       _eventCount++;
       setGauge('g-events', _eventCount);
-      addMiniFeed(m.type, JSON.stringify(m.data || {}).slice(0, 60));
+      addEvent(m);  // add to live events panel
     } catch {}
   });
   eventSource.addEventListener('error', () => { updateConn(false); setTimeout(connectSSE, 5000); });
@@ -1860,7 +1950,7 @@ document.addEventListener('keydown', e => {
    BOOT
 ══════════════════════════════════════════════════════════════ */
 async function boot() {
-  await Promise.all([loadStatus(), loadSessions(), loadCrons(), loadBriefing(), loadSkills()]);
+  await Promise.all([loadStatus(), loadSessions(), loadCrons(), loadBriefing(), loadSkills(), loadEvents()]);
   await Promise.all([loadGraph(), loadIssues(''), loadGoals()]);
   resizeCanvas();
   connectSSE();

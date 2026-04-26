@@ -39,11 +39,18 @@ hermes = HermesAdaptor(api_base=HERMES_BASE)
 # ─── In-memory event store for SSE ───────────────────────────────────────────
 _event_queue: asyncio.Queue = asyncio.Queue()
 _subscribers: list[asyncio.Queue] = []
+_MAX_EVENT_LOG = 100  # ring buffer size
+_event_log: list[dict] = []  # recent events for /api/events/recent
 
 
 async def emit(event_type: str, data: dict):
-    """Push an event to all SSE subscribers."""
-    payload = json.dumps({"type": event_type, "data": data, "ts": datetime.now().isoformat()})
+    """Push an event to all SSE subscribers and append to the recent-event ring buffer."""
+    entry = {"type": event_type, "data": data, "ts": datetime.now().isoformat()}
+    # Ring buffer: maintain last MAX_EVENT_LOG entries
+    _event_log.append(entry)
+    if len(_event_log) > _MAX_EVENT_LOG:
+        _event_log = _event_log[-_MAX_EVENT_LOG:]
+    payload = json.dumps(entry)
     for q in _subscribers[:]:
         try:
             await q.put(payload)
@@ -81,6 +88,12 @@ async def events(request: Request):
 @app.get("/api/ping")
 async def ping():
     return {"ok": True, "ts": datetime.now().isoformat()}
+
+
+@app.get("/api/events/recent")
+async def get_recent_events(limit: int = 50):
+    """Return the last N events from the ring buffer (most recent last)."""
+    return {"ok": True, "data": _event_log[-limit:]}
 
 
 @app.get("/api/status")
