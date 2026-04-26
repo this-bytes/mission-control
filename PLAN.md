@@ -728,3 +728,47 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 ---
 
 *Plan created: 2026-04-25. Cron job will review this hourly and iterate unless blocked.*
+
+---
+
+## Session Log — 2026-04-26 23:47 UTC
+
+### Changes Made
+
+**Full Dashboard Rewrite — Aesthetics + Architecture**
+
+The dashboard was rebuilt from scratch. The previous version was a generic dark dashboard with emoji decorators and no real operational feel. This version commits to a specific reference: SpaceX mission control meets Bloomberg Terminal.
+
+**Aesthetic changes:**
+- Font: JetBrains Mono throughout (was Segoe UI/system-ui)
+- Colors: Pure black background (#000), green primary (#00e676), cyan accent (#00b4d4), amber warnings (#f5a623), no blue/purple gradients
+- No emoji anywhere — all indicators are text/ASCII characters
+- Dense 3-column layout: left (status + sessions + crons + briefing) | center (terminal) | right (tabbed: graph/history/issues/skills)
+- Top bar: metric gauges showing version, PID, session count, cron count, live event counter
+
+**Functional changes:**
+- **Terminal (center)**: Full command interface. `/help`, `/cron`, `/sessions`, `/graph`, `/clear` built-ins. Real streaming responses from Hermes displayed character-by-character. Command history (ArrowUp/Down) persisted to localStorage.
+- **Sessions**: Click any session to expand inline messages. Toggle open/close.
+- **Cron Jobs**: List with schedule, last status, next run time. Inline RUN button per job. Clickable strip showing next 5 upcoming.
+- **Briefing**: Regenerate button triggers morning-briefing cron.
+- **Knowledge Graph**: Canvas force-directed graph. Click any node → detail panel shows entity type and all related facts with previews.
+- **History Search**: Full-text FTS5 search. Click result to insert into terminal.
+- **Paperclip Issues**: Filter by All/Blocked/Todo/Active. Click issue to expand full body text. Shows assignee, labels, dates.
+- **Skills**: Filter by name/description/tags. Click skill to invoke (fills command bar with `!<skill-name>`).
+- **Command Palette**: `/` hotkey. Sections for Actions, Skills, Cron Jobs. Keyboard navigation.
+
+### Current State
+- Service running on port 8420 (systemd) ✅
+- Git committed + pushed to `github.com/this-bytes/mission-control` ✅
+- 20 knowledge graph nodes, 4 edges
+- 31 cron jobs
+- 20 paperclip issues across 5 statuses
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — push to feature branch, open PR from Mission Control UI
+2. **Entity detail → drill into facts** — click a fact in the graph detail panel to see full content
+3. **Streaming performance** — increase `chunk_size=1` to ~64 for faster token delivery
+4. **Panel drag-and-drop reorder** — bring back the drag-and-drop from the old version
+5. **Live metrics over time** — token usage graphs, uptime history

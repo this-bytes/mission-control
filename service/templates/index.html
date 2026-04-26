@@ -4,598 +4,867 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mission Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #0a0e17;
-      --surface: #111827;
-      --surface2: #1f2937;
-      --surface3: #0d1117;
-      --border: #374151;
-      --text: #f9fafb;
-      --muted: #9ca3af;
-      --accent: #3b82f6;
-      --accent-dim: #1d4ed8;
-      --green: #22c55e;
-      --yellow: #eab308;
+      --bg: #000;
+      --surface: #0a0a0a;
+      --surface2: #111;
+      --surface3: #161616;
+      --border: #1e1e1e;
+      --border2: #252525;
+      --text: #c8c8c8;
+      --text-bright: #f0f0f0;
+      --green: #00e676;
+      --green-dim: #00a854;
+      --cyan: #00b4d4;
+      --amber: #f5a623;
       --red: #ef4444;
-      --amber: #f59e0b;
-      --purple: #a855f7;
-      --cyan: #06b6d4;
+      --muted: #555;
+      --selected: rgba(0,180,212,0.12);
+      --font: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
     }
 
-    body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    html, body {
+      height: 100%;
+      font-family: var(--font);
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
+      font-size: 12px;
+      line-height: 1.5;
       overflow: hidden;
     }
 
-    /* ── Top Bar ─────────────────────────────────────────── */
+    /* ── Scrollbars ─────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    /* ── Top Bar ────────────────────────────────────────────── */
     #topbar {
-      display: flex; align-items: center; gap: 16px;
-      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      height: 36px;
+      padding: 0 16px;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      position: sticky; top: 0; z-index: 100;
-      height: 44px;
-    }
-    #topbar h1 {
-      font-size: 0.85rem; font-weight: 700; letter-spacing: 0.12em;
-      color: var(--accent); text-transform: uppercase;
-    }
-    #topbar .spacer { flex: 1; }
-    #topbar .clock {
-      font-size: 0.8rem; color: var(--muted);
-      font-variant-numeric: tabular-nums; letter-spacing: 0.05em;
-    }
-    .kbd {
-      display: inline-block;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 1px 6px;
-      font-size: 0.7rem;
-      color: var(--muted);
-      font-family: monospace;
-    }
-
-    /* ── Cron Strip ─────────────────────────────────────── */
-    #cron-strip {
-      display: flex; align-items: center; gap: 10px;
-      padding: 5px 20px;
-      background: var(--surface2);
-      border-bottom: 1px solid var(--border);
-      font-size: 0.68rem;
-      overflow: hidden;
-      flex-shrink: 0;
-    }
-    #cron-strip .strip-label {
-      color: var(--muted);
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    #cron-strip .strip-jobs {
-      display: flex; gap: 8px; overflow: hidden;
-    }
-    #cron-strip .strip-job {
-      white-space: nowrap;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 1px 8px;
-      color: var(--accent);
-      cursor: pointer;
-    }
-    #cron-strip .strip-job:hover { border-color: var(--accent); }
-    #cron-strip .strip-job .job-time { color: var(--muted); font-size: 0.62rem; margin-left: 4px; }
-
-    /* ── Status dots ────────────────────────────────────── */
-    .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
-    .dot-green  { background: var(--green); box-shadow: 0 0 5px var(--green); }
-    .dot-red    { background: var(--red); }
-    .dot-yellow { background: var(--yellow); }
-    .dot-gray   { background: var(--muted); }
-
-    /* ── Main Layout ────────────────────────────────────── */
-    #layout {
-      display: grid;
-      grid-template-columns: 260px 1fr 320px;
-      grid-template-rows: auto 1fr;
-      height: calc(100vh - 44px);
       gap: 0;
+      flex-shrink: 0;
     }
-
-    /* ── Left Column ────────────────────────────────────── */
-    #left-col {
+    #topbar .logo {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: var(--cyan);
+      text-transform: uppercase;
+      margin-right: 24px;
+    }
+    #topbar .logo span { color: var(--muted); font-weight: 400; }
+    .metric-gauge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 14px;
       border-right: 1px solid var(--border);
-      display: flex; flex-direction: column;
-      overflow: hidden;
+      height: 100%;
     }
-
-    /* ── Draggable Panels ───────────────────────────────── */
-    .draggable-panel {
-      cursor: grab;
-      user-select: none;
-      transition: background 0.15s;
-      flex-shrink: 0;
-    }
-    .draggable-panel:hover { background: rgba(59,130,246,0.06); }
-    .draggable-panel:active { cursor: grabbing; }
-    .draggable-panel.drag-over {
-      border-top: 2px solid var(--accent);
-      background: rgba(59,130,246,0.12);
-    }
-    .drag-handle {
-      display: inline-block;
+    .gauge-label {
+      font-size: 9px;
+      letter-spacing: 0.1em;
       color: var(--muted);
-      font-size: 0.6rem;
-      margin-right: 4px;
-      opacity: 0;
-      transition: opacity 0.15s;
-      cursor: grab;
+      text-transform: uppercase;
     }
-    .draggable-panel:hover .drag-handle { opacity: 1; }
+    .gauge-value {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--green);
+      font-variant-numeric: tabular-nums;
+    }
+    .gauge-value.amber { color: var(--amber); }
+    .gauge-value.red { color: var(--red); }
+    .gauge-value.cyan { color: var(--cyan); }
+    .topbar-spacer { flex: 1; }
+    .conn-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--muted);
+      margin-right: 6px;
+    }
+    .conn-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .conn-dot.dead { background: var(--red); }
+    .clock {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.05em;
+    }
 
-    /* ── Status Panel ────────────────────────────────────── */
-    #status-panel {
-      padding: 12px 14px;
+    /* ── Cron Strip ────────────────────────────────────────── */
+    #cron-strip {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      height: 28px;
+      padding: 0 16px;
+      background: var(--surface2);
       border-bottom: 1px solid var(--border);
+      font-size: 10px;
+      overflow: hidden;
       flex-shrink: 0;
     }
-    #gateway-info {
-      font-size: 0.7rem; color: var(--muted);
-      margin-bottom: 8px; padding-bottom: 8px;
-      border-bottom: 1px solid var(--border);
-    }
-    .platform-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 4px 0; font-size: 0.75rem;
-    }
-    .platform-name { display: flex; align-items: center; gap: 5px; }
-
-    /* ── Sessions Panel ─────────────────────────────────── */
-    #sessions-panel {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
+    .strip-label {
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-right: 10px;
       flex-shrink: 0;
-      max-height: 180px; overflow-y: auto;
+      font-size: 9px;
     }
-    .panel-label {
-      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
-      text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+    .strip-jobs { display: flex; gap: 6px; overflow: hidden; }
+    .strip-job {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 1px 7px;
+      cursor: pointer;
+      color: var(--text);
+      white-space: nowrap;
+      transition: border-color 0.1s;
     }
-    .session-item {
-      padding: 5px 0; border-bottom: 1px solid var(--border);
-      font-size: 0.72rem; cursor: pointer;
-    }
-    .session-item:last-child { border-bottom: none; }
-    .session-item:hover .session-name { color: var(--accent); }
-    .session-expanded { background: rgba(59,130,246,0.05); margin: 0 -10px; padding: 0 10px; border-radius: 4px; }
-    .session-platform { color: var(--muted); font-size: 0.62rem; text-transform: uppercase; }
-    .session-name { color: var(--text); font-weight: 500; }
-    .session-meta { color: var(--muted); font-size: 0.62rem; }
-    .session-detail { margin-top: 6px; }
+    .strip-job:hover { border-color: var(--cyan); color: var(--cyan); }
+    .strip-job .job-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+    .strip-job .job-time { color: var(--muted); font-size: 9px; }
+    .strip-job .run-icon { color: var(--green-dim); font-size: 8px; }
 
-    /* ── Cron Jobs Panel ────────────────────────────────── */
-    #crons-panel {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-      max-height: 220px; overflow-y: auto;
+    /* ── Main Grid ─────────────────────────────────────────── */
+    #grid {
+      display: grid;
+      grid-template-columns: 248px 1fr 300px;
+      height: calc(100vh - 36px - 28px);
     }
-    #crons-list { font-size: 0.7rem; }
-    .cron-item {
-      padding: 5px 0; border-bottom: 1px solid rgba(55,65,81,0.5);
-      display: flex; align-items: flex-start; gap: 6px;
-    }
-    .cron-item:last-child { border-bottom: none; }
-    .cron-name { color: var(--text); font-weight: 500; flex: 1; min-width: 0; }
-    .cron-name.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cron-run-btn {
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 4px; color: var(--accent); font-size: 0.6rem;
-      padding: 1px 6px; cursor: pointer; flex-shrink: 0;
-      transition: all 0.15s;
-    }
-    .cron-run-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
-    .cron-schedule { font-size: 0.6rem; color: var(--muted); margin-top: 1px; }
-    .cron-last-run { font-size: 0.6rem; color: var(--muted); margin-top: 1px; }
-    .cron-status-ok { color: var(--green); }
-    .cron-status-err { color: var(--red); }
-    .cron-status-none { color: var(--muted); }
-    .cron-warn { color: var(--amber); font-size: 0.6rem; }
 
-    /* ── Briefing Panel ─────────────────────────────────── */
-    #briefing-panel {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-      max-height: 160px; overflow-y: auto;
-    }
-    #briefing-text {
-      font-size: 0.72rem; color: var(--text); line-height: 1.5;
-    }
-    #briefing-meta { font-size: 0.62rem; color: var(--muted); margin-top: 4px; }
-
-    /* ── Command Input ──────────────────────────────────── */
-    #command-section {
-      padding: 10px 14px;
-      flex-shrink: 0;
-      background: var(--surface);
-    }
-    #cmd-input {
-      width: 100%; background: var(--bg); border: 1px solid var(--border);
-      border-radius: 6px; padding: 8px 10px;
-      color: var(--text); font-size: 0.8rem; outline: none;
-    }
-    #cmd-input:focus { border-color: var(--accent); }
-    #cmd-response {
-      margin-top: 6px; font-size: 0.72rem; color: var(--muted);
-      min-height: 16px; word-break: break-word; line-height: 1.4;
-    }
-    #cmd-response.error { color: var(--red); }
-
-    /* ── Center Column ───────────────────────────────────── */
-    #center-col {
-      display: flex; flex-direction: column;
+    /* ── Column ─────────────────────────────────────────────── */
+    .col {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
       overflow: hidden;
     }
+    .col:last-child { border-right: none; }
 
-    /* ── Feed Panel ─────────────────────────────────────── */
-    #feed-panel {
-      flex: 1; overflow: hidden;
-      display: flex; flex-direction: column;
+    /* ── Section Header ─────────────────────────────────────── */
+    .sec-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px;
+      background: var(--surface2);
       border-bottom: 1px solid var(--border);
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      flex-shrink: 0;
+      height: 30px;
     }
-    #feed-header {
-      display: flex; align-items: center; gap: 8px;
+    .sec-header .title { font-weight: 600; }
+    .sec-header .actions { display: flex; gap: 6px; }
+    .sec-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 9px;
+      padding: 1px 5px;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: all 0.1s;
+    }
+    .sec-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .sec-btn.active { border-color: var(--cyan); color: var(--cyan); background: var(--selected); }
+
+    /* ── Scrollable body ────────────────────────────────────── */
+    .sec-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    /* ── Status Section ─────────────────────────────────────── */
+    #status-body { padding: 0; }
+    .platform-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+    }
+    .platform-row:last-child { border-bottom: none; }
+    .pname {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--text);
+    }
+    .pdot { width: 5px; height: 5px; border-radius: 50%; }
+    .pdot.ok { background: var(--green); }
+    .pdot.err { background: var(--red); }
+    .pdot.warn { background: var(--amber); }
+    .pdot.off { background: var(--muted); }
+    .pstate { font-size: 10px; color: var(--muted); }
+    .pstate.ok { color: var(--green-dim); }
+    .pstate.err { color: var(--red); }
+    .perror { font-size: 9px; color: var(--red); margin-left: 12px; }
+
+    /* ── Sessions ──────────────────────────────────────────── */
+    .session-row {
+      padding: 6px 12px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .session-row:hover { background: var(--surface2); }
+    .session-row.open { background: var(--surface2); border-left: 2px solid var(--cyan); }
+    .session-row-header { display: flex; align-items: center; gap: 6px; }
+    .sess-platform { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .sess-name { font-size: 11px; color: var(--text-bright); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sess-msgs { font-size: 9px; color: var(--muted); }
+    .sess-meta { font-size: 9px; color: var(--muted); margin-top: 1px; }
+    .session-msgs-list { margin-top: 6px; }
+    .msg-item {
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 5px 7px;
+      margin-bottom: 4px;
+      font-size: 10px;
+    }
+    .msg-role { font-size: 9px; font-weight: 600; text-transform: uppercase; margin-bottom: 2px; }
+    .msg-role.user { color: var(--cyan); }
+    .msg-role.assistant { color: var(--green-dim); }
+    .msg-role.tool { color: var(--amber); }
+    .msg-content {
+      color: var(--text);
+      line-height: 1.4;
+      max-height: 60px;
+      overflow: hidden;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg-content.expanded { max-height: none; }
+
+    /* ── Cron Jobs ─────────────────────────────────────────── */
+    .cron-row {
+      padding: 6px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+    }
+    .cron-row:last-child { border-bottom: none; }
+    .cron-row-top { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+    .cron-name { flex: 1; color: var(--text-bright); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cron-run-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 9px;
+      padding: 1px 6px;
+      cursor: pointer;
+      transition: all 0.1s;
+      flex-shrink: 0;
+    }
+    .cron-run-btn:hover { border-color: var(--green); color: var(--green); }
+    .cron-meta { font-size: 9px; color: var(--muted); display: flex; gap: 8px; }
+    .cron-sched { color: var(--text); }
+    .cron-status { color: var(--muted); }
+    .cron-status.ok { color: var(--green-dim); }
+    .cron-status.err { color: var(--red); }
+    .cron-next { color: var(--cyan); font-size: 9px; }
+
+    /* ── Briefing ─────────────────────────────────────────── */
+    #briefing-content { padding: 10px 12px; font-size: 11px; color: var(--text); line-height: 1.6; }
+    #briefing-meta { padding: 4px 12px 8px; font-size: 9px; color: var(--muted); }
+
+    /* ── Center: Terminal ──────────────────────────────────── */
+    #center-col { display: flex; flex-direction: column; }
+    #terminal-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #terminal-output {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 14px;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+    .term-cmd {
+      margin-bottom: 8px;
+    }
+    .term-cmd .prompt {
+      color: var(--green);
+      font-size: 11px;
+    }
+    .term-cmd .cmd-text {
+      color: var(--text-bright);
+      font-size: 11px;
+      word-break: break-word;
+    }
+    .term-response {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 2px solid var(--green-dim);
+      border-radius: 0 2px 2px 0;
+      padding: 7px 10px;
+      margin: 4px 0;
+      color: var(--text);
+      font-size: 11px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .term-response.error {
+      border-left-color: var(--red);
+      color: var(--red);
+    }
+    .term-response.streaming {
+      border-left-color: var(--cyan);
+      color: var(--cyan);
+    }
+    #cmd-input-wrap {
+      display: flex;
+      align-items: center;
       padding: 8px 14px;
       background: var(--surface2);
-      border-bottom: 1px solid var(--border);
-      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
-      text-transform: uppercase; color: var(--muted);
+      border-top: 1px solid var(--border);
+      gap: 8px;
       flex-shrink: 0;
     }
-    #feed-list {
-      flex: 1; overflow-y: auto; padding: 6px 14px;
-      list-style: none; font-size: 0.72rem;
+    #cmd-prompt-label {
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 600;
+      flex-shrink: 0;
     }
-    #feed-list li {
-      padding: 4px 0;
-      border-bottom: 1px solid rgba(55,65,81,0.5);
-      display: flex; gap: 8px; align-items: baseline;
+    #cmd-input {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text-bright);
+      font-family: var(--font);
+      font-size: 12px;
+      outline: none;
+      caret-color: var(--green);
     }
-    .feed-time { color: var(--muted); font-size: 0.65rem; min-width: 60px; }
-    .feed-type {
-      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.05em;
-      text-transform: uppercase; min-width: 50px;
-    }
-    .feed-type.cmd { color: var(--accent); }
-    .feed-type.hermes { color: var(--green); }
-    .feed-type.cron { color: var(--amber); }
-    .feed-type.system { color: var(--muted); }
-    .feed-type.error { color: var(--red); }
-    .feed-msg { color: var(--text); flex: 1; }
-    #feed-empty { color: var(--muted); font-size: 0.72rem; text-align: center; padding: 30px 0; }
+    #cmd-input::placeholder { color: var(--muted); }
 
-    /* ── Right Column ───────────────────────────────────── */
-    #right-col {
-      border-left: 1px solid var(--border);
-      display: flex; flex-direction: column;
-      overflow: hidden;
-    }
-
-    /* ── Tab Bar ────────────────────────────────────────── */
+    /* ── Right: Tabs ────────────────────────────────────────── */
+    #right-col { display: flex; flex-direction: column; }
     #tab-bar {
       display: flex;
       background: var(--surface2);
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
-    .tab-btn {
-      flex: 1; padding: 8px 4px;
-      background: none; border: none;
-      color: var(--muted); font-size: 0.65rem; font-weight: 700;
-      letter-spacing: 0.08em; text-transform: uppercase;
-      cursor: pointer; border-bottom: 2px solid transparent;
-      transition: all 0.15s;
+    .tab {
+      flex: 1;
+      padding: 7px 4px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.1s;
     }
-    .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.05); }
-    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-    /* ── Tab Panels ─────────────────────────────────────── */
+    .tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+    .tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
     .tab-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
     .tab-panel.active { display: flex; }
-    .tab-panel-header {
+
+    /* ── Graph ─────────────────────────────────────────────── */
+    #graph-canvas { flex: 1; cursor: grab; }
+    #graph-detail {
       padding: 8px 12px;
       background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      font-size: 0.62rem; color: var(--muted);
-      flex-shrink: 0;
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+      line-height: 1.5;
+      min-height: 70px;
+      max-height: 140px;
+      overflow-y: auto;
+      color: var(--text);
     }
+    .detail-entity { color: var(--cyan); font-weight: 600; font-size: 11px; margin-bottom: 4px; }
+    .detail-type { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .detail-fact { padding: 2px 0; border-bottom: 1px solid var(--border); color: var(--text); }
+    .detail-fact:last-child { border-bottom: none; }
+    .detail-rel { color: var(--amber); font-size: 9px; }
+    .detail-rel-label { color: var(--muted); }
+    .detail-empty { color: var(--muted); font-size: 10px; }
 
-    /* ── Graph Panel ─────────────────────────────────────── */
-    #graph-panel canvas { flex: 1; }
-
-    /* ── Search Panel ────────────────────────────────────── */
-    #search-panel { flex-direction: column; }
-    #search-input-wrap {
-      padding: 8px 10px;
+    /* ── History Search ─────────────────────────────────────── */
+    #search-bar {
+      display: flex;
+      gap: 6px;
+      padding: 7px 10px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
-      display: flex; gap: 6px;
     }
     #search-input {
-      flex: 1; background: var(--bg); border: 1px solid var(--border);
-      border-radius: 4px; padding: 5px 8px;
-      color: var(--text); font-size: 0.75rem; outline: none;
+      flex: 1;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 4px 8px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 11px;
+      outline: none;
     }
-    #search-input:focus { border-color: var(--accent); }
-    #search-btn {
-      background: var(--accent); border: none; border-radius: 4px;
-      color: white; padding: 0 10px; cursor: pointer;
-      font-size: 0.7rem; font-weight: 600;
-    }
-    #search-results {
-      flex: 1; overflow-y: auto; padding: 8px 10px;
-    }
-    .search-result {
-      padding: 6px 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.7rem;
-    }
-    .search-result:last-child { border-bottom: none; }
-    .search-result-header { display: flex; justify-content: space-between; margin-bottom: 2px; }
-    .search-source { color: var(--accent); font-size: 0.62rem; font-weight: 600; }
-    .search-role { color: var(--muted); font-size: 0.6rem; text-transform: uppercase; }
-    .search-content { color: var(--text); line-height: 1.4; }
-    .search-time { color: var(--muted); font-size: 0.6rem; margin-top: 2px; }
-    #search-empty { color: var(--muted); font-size: 0.72rem; text-align: center; padding: 20px 0; }
-
-    /* ── Skills Panel ───────────────────────────────────── */
-    #skills-panel { flex-direction: column; }
-    #skills-list {
-      flex: 1; overflow-y: auto; padding: 6px 10px;
-    }
-    .skill-item {
-      padding: 7px 0;
-      border-bottom: 1px solid var(--border);
+    #search-input:focus { border-color: var(--cyan); }
+    #search-go {
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--cyan);
+      font-family: var(--font);
+      font-size: 10px;
+      padding: 4px 10px;
       cursor: pointer;
     }
-    .skill-item:hover { background: rgba(59,130,246,0.08); margin: 0 -10px; padding-left: 10px; padding-right: 10px; }
-    .skill-item:last-child { border-bottom: none; }
-    .skill-name { color: var(--text); font-size: 0.75rem; font-weight: 600; }
-    .skill-desc { color: var(--muted); font-size: 0.65rem; margin-top: 2px; line-height: 1.3; }
-    .skill-tags { margin-top: 3px; }
+    #search-results { flex: 1; overflow-y: auto; }
+    .hist-result {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .hist-result:hover { background: var(--surface2); }
+    .hist-result-header { display: flex; justify-content: space-between; margin-bottom: 3px; }
+    .hist-source { color: var(--cyan); font-size: 9px; font-weight: 600; }
+    .hist-role { color: var(--muted); font-size: 9px; text-transform: uppercase; }
+    .hist-ts { color: var(--muted); font-size: 9px; }
+    .hist-content { font-size: 10px; color: var(--text); line-height: 1.4; }
+    .hist-empty { padding: 20px; text-align: center; color: var(--muted); font-size: 10px; }
+
+    /* ── Paperclip ──────────────────────────────────────────── */
+    #paperclip-filters {
+      display: flex;
+      gap: 4px;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .pc-filter {
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 9px;
+      padding: 2px 7px;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .pc-filter:hover { border-color: var(--cyan); color: var(--text); }
+    .pc-filter.active { border-color: var(--cyan); color: var(--cyan); background: var(--selected); }
+    #paperclip-list { flex: 1; overflow-y: auto; }
+    .issue-row {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .issue-row:hover { background: var(--surface2); }
+    .issue-row.open { background: var(--surface2); border-left: 2px solid var(--cyan); }
+    .issue-header { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 3px; }
+    .issue-title { flex: 1; font-size: 11px; color: var(--text-bright); line-height: 1.3; }
+    .issue-badge {
+      font-size: 8px;
+      font-weight: 600;
+      padding: 1px 5px;
+      border-radius: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      flex-shrink: 0;
+    }
+    .badge-blocked { background: rgba(239,68,68,0.15); color: var(--red); }
+    .badge-in_progress { background: rgba(0,180,212,0.15); color: var(--cyan); }
+    .badge-open { background: rgba(0,230,118,0.1); color: var(--green-dim); }
+    .issue-meta { font-size: 9px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+    .issue-labels { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; }
+    .issue-label {
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 0 4px;
+      font-size: 8px;
+      color: var(--muted);
+    }
+    .issue-body {
+      display: none;
+      margin-top: 6px;
+      padding: 6px 8px;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      font-size: 10px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .issue-body.visible { display: block; }
+    .issue-assignee { color: var(--amber); }
+    #paperclip-goals {
+      border-top: 1px solid var(--border);
+      max-height: 150px;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    .goals-header {
+      padding: 5px 10px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .goal-row { padding: 4px 10px; border-bottom: 1px solid var(--border); font-size: 10px; }
+    .goal-row:last-child { border-bottom: none; }
+    .goal-title { color: var(--text); }
+    .goal-status { color: var(--muted); font-size: 9px; margin-top: 1px; }
+
+    /* ── Skills ─────────────────────────────────────────────── */
+    #skills-filter-wrap {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #skills-filter-input {
+      width: 100%;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 4px 8px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 11px;
+      outline: none;
+    }
+    #skills-filter-input:focus { border-color: var(--cyan); }
+    #skills-list { flex: 1; overflow-y: auto; }
+    .skill-row {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .skill-row:hover { background: var(--surface2); }
+    .skill-name { font-size: 11px; color: var(--text-bright); font-weight: 500; }
+    .skill-desc { font-size: 10px; color: var(--muted); margin-top: 2px; line-height: 1.3; }
+    .skill-owner { float: right; font-size: 9px; color: var(--muted); }
+    .skill-tags { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 3px; }
     .skill-tag {
-      display: inline-block; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 3px; padding: 0 5px; font-size: 0.58rem; color: var(--muted);
-      margin-right: 3px;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 0 4px;
+      font-size: 8px;
+      color: var(--muted);
     }
 
-    /* ── Command Palette ─────────────────────────────────── */
+    /* ── Command Palette ────────────────────────────────────── */
     #palette-overlay {
       position: fixed; inset: 0;
-      background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(4px);
-      z-index: 200;
+      background: rgba(0,0,0,0.85);
+      z-index: 300;
       display: none;
       align-items: flex-start; justify-content: center;
-      padding-top: 80px;
+      padding-top: 60px;
     }
     #palette-overlay.open { display: flex; }
-    #palette {
-      width: 600px; max-width: 90vw;
+    #palette-box {
+      width: 580px; max-width: 92vw;
       background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8);
       overflow: hidden;
     }
-    #palette-input-wrap {
-      display: flex; align-items: center; gap: 10px;
-      padding: 14px 16px;
+    #palette-input-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
       border-bottom: 1px solid var(--border);
+      background: var(--surface2);
     }
-    #palette-input-wrap .icon { font-size: 1.2rem; }
+    #palette-icon { color: var(--cyan); font-size: 14px; }
     #palette-input {
-      flex: 1; background: none; border: none;
-      color: var(--text); font-size: 1rem; outline: none;
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text-bright);
+      font-family: var(--font);
+      font-size: 13px;
+      outline: none;
     }
     #palette-input::placeholder { color: var(--muted); }
-    #palette-hint { font-size: 0.7rem; color: var(--muted); }
-    #palette-results {
-      max-height: 400px; overflow-y: auto;
+    #palette-results { max-height: 360px; overflow-y: auto; }
+    .pal-section {
+      padding: 4px 0;
+      border-bottom: 1px solid var(--border);
     }
-    .palette-section-label {
-      padding: 6px 16px;
-      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em;
-      text-transform: uppercase; color: var(--muted);
+    .pal-section:last-child { border-bottom: none; }
+    .pal-section-label {
+      padding: 3px 14px;
+      font-size: 8px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
       background: var(--surface2);
-      position: sticky; top: 0;
     }
-    .palette-item {
+    .pal-item {
       display: flex; align-items: center; gap: 10px;
-      padding: 10px 16px; cursor: pointer;
-      border-bottom: 1px solid rgba(55,65,81,0.3);
+      padding: 8px 14px;
+      cursor: pointer;
+      transition: background 0.08s;
     }
-    .palette-item:hover, .palette-item.selected {
-      background: rgba(59,130,246,0.15);
-    }
-    .palette-item .icon { font-size: 1rem; width: 24px; text-align: center; }
-    .palette-item .label { font-size: 0.8rem; color: var(--text); }
-    .palette-item .sublabel { font-size: 0.65rem; color: var(--muted); }
-    .palette-item .shortcut { margin-left: auto; font-size: 0.65rem; color: var(--muted); }
+    .pal-item:hover, .pal-item.selected { background: var(--selected); }
+    .pal-item-icon { font-size: 12px; width: 20px; text-align: center; color: var(--muted); }
+    .pal-item-label { font-size: 12px; color: var(--text-bright); flex: 1; }
+    .pal-item-sub { font-size: 10px; color: var(--muted); }
+    .pal-item-shortcut { font-size: 9px; color: var(--muted); }
     #palette-footer {
-      padding: 8px 16px;
+      padding: 6px 14px;
       border-top: 1px solid var(--border);
-      display: flex; gap: 16px;
-      font-size: 0.62rem; color: var(--muted);
+      display: flex; gap: 14px;
+      font-size: 9px; color: var(--muted);
+      background: var(--surface2);
     }
-    #palette-footer span { display: flex; align-items: center; gap: 4px; }
-
-    .pc-filter-btn {
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 3px; color: var(--muted); font-size: 0.6rem;
-      padding: 1px 6px; cursor: pointer; transition: all 0.15s;
+    #palette-footer kbd {
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 0 4px;
+      font-family: var(--font);
+      font-size: 9px;
     }
-    .pc-filter-btn:hover, .pc-filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
-    .issue-item { padding: 6px 0; border-bottom: 1px solid rgba(55,65,81,0.5); }
-    .issue-item:last-child { border-bottom: none; }
-    .issue-title { font-size: 0.72rem; color: var(--text); line-height: 1.3; }
-    .issue-meta { font-size: 0.6rem; color: var(--muted); margin-top: 2px; display: flex; gap: 6px; align-items: center; }
-    .issue-status { padding: 0 4px; border-radius: 3px; font-weight: 600; }
-    .status-blocked { background: rgba(239,68,68,0.2); color: var(--red); }
-    .status-in_progress { background: rgba(59,130,246,0.2); color: var(--accent); }
-    .status-open { background: rgba(34,197,94,0.2); color: var(--green); }
-    .goal-item { padding: 4px 0; font-size: 0.7rem; border-bottom: 1px solid rgba(55,65,81,0.4); }
-    .goal-item:last-child { border-bottom: none; }
-    .goal-name { color: var(--text); font-weight: 500; }
-    .goal-meta { color: var(--muted); font-size: 0.6rem; }
 
-    .mono { font-family: 'Cascadia Code', 'Fira Code', monospace; }
-    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .scroll-thin::-webkit-scrollbar { width: 4px; }
-    .scroll-thin::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    /* ── Live Feed (mini) ───────────────────────────────────── */
+    #feed-mini {
+      font-size: 9px;
+      color: var(--muted);
+      overflow: hidden;
+      height: 20px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .feed-entry { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .feed-entry .type { font-weight: 600; margin-right: 4px; }
+    .feed-entry.cmd .type { color: var(--cyan); }
+    .feed-entry.cron .type { color: var(--amber); }
+    .feed-entry.hermes .type { color: var(--green-dim); }
+    .feed-entry.error .type { color: var(--red); }
+    .feed-entry.system .type { color: var(--muted); }
+
+    /* ── Misc ───────────────────────────────────────────────── */
+    .loading { color: var(--muted); font-size: 10px; padding: 8px 12px; }
+    .err-msg { color: var(--red); font-size: 10px; padding: 8px 12px; }
+    .empty-msg { color: var(--muted); font-size: 10px; padding: 12px; text-align: center; }
   </style>
 </head>
 <body>
 
 <!-- ── Top Bar ─────────────────────────────────────────────────────────────── -->
 <div id="topbar">
-  <span style="font-size:1rem">🚀</span>
-  <h1>Mission Control</h1>
-  <div class="spacer"></div>
-  <button onclick="openPalette()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 10px;color:var(--muted);font-size:0.72rem;cursor:pointer;display:flex;align-items:center;gap:6px;">
-    <span>⚡</span> Command <span class="kbd">/</span>
-  </button>
-  <div id="connection-status">
-    <span class="status-dot dot-gray" id="conn-dot"></span>
-    <span id="conn-label" style="font-size:0.72rem;color:var(--muted)">Connecting...</span>
+  <div class="logo">MISSION<span>/</span>CONTROL</div>
+
+  <div class="metric-gauge">
+    <span class="gauge-label">Hermes</span>
+    <span class="gauge-value" id="g-hermes-version">—</span>
+  </div>
+  <div class="metric-gauge">
+    <span class="gauge-label">PID</span>
+    <span class="gauge-value cyan" id="g-pid">—</span>
+  </div>
+  <div class="metric-gauge">
+    <span class="gauge-label">Sessions</span>
+    <span class="gauge-value" id="g-sessions">—</span>
+  </div>
+  <div class="metric-gauge">
+    <span class="gauge-label">Crons</span>
+    <span class="gauge-value" id="g-crons">—</span>
+  </div>
+  <div class="metric-gauge">
+    <span class="gauge-label">Events</span>
+    <span class="gauge-value amber" id="g-events">0</span>
+  </div>
+  <div class="topbar-spacer"></div>
+  <div style="display:flex;align-items:center;margin-right:16px;">
+    <div class="conn-dot" id="conn-dot"></div>
+    <span id="conn-label" style="font-size:10px;color:var(--muted)">Connecting</span>
   </div>
   <div class="clock" id="clock"></div>
 </div>
 
+<!-- ── Cron Strip ─────────────────────────────────────────────────────────── -->
 <div id="cron-strip">
-  <span class="strip-label">⏰ Soon:</span>
+  <span class="strip-label">NEXT</span>
   <div class="strip-jobs" id="strip-jobs"></div>
 </div>
 
-<!-- ── Layout ────────────────────────────────────────────────────────────── -->
-<div id="layout">
+<!-- ── Main Grid ─────────────────────────────────────────────────────────── -->
+<div id="grid">
 
-  <!-- ── Left Column ───────────────────────────────────────── -->
-  <div id="left-col">
+  <!-- ── LEFT COLUMN ─────────────────────────────────────── -->
+  <div class="col" id="left-col">
 
     <!-- Status -->
-    <div id="status-panel" class="draggable-panel" data-panel="status-panel" draggable="false">
-      <div class="panel-label"><span class="drag-handle">&#9776;</span>⚡ System</div>
-      <div id="gateway-info">Loading...</div>
-      <div id="platform-list"></div>
+    <div class="sec-header">
+      <span class="title">System</span>
+      <div class="actions">
+        <button class="sec-btn" onclick="loadStatus()" title="Refresh">&#8635;</button>
+      </div>
+    </div>
+    <div class="sec-body" id="status-body">
+      <div class="loading">Loading...</div>
     </div>
 
     <!-- Sessions -->
-    <div id="sessions-panel" class="draggable-panel" data-panel="sessions-panel" draggable="false">
-      <div class="panel-label"><span class="drag-handle">&#9776;</span>💬 Sessions</div>
-      <div id="sessions-list">Loading...</div>
+    <div class="sec-header">
+      <span class="title">Sessions</span>
+    </div>
+    <div class="sec-body" id="sessions-body">
+      <div class="loading">Loading...</div>
     </div>
 
     <!-- Cron Jobs -->
-    <div id="crons-panel" class="draggable-panel" data-panel="crons-panel" draggable="false">
-      <div class="panel-label"><span class="drag-handle">&#9776;</span>⏰ Cron Jobs <span id="crons-count" style="font-weight:400;text-transform:none"></span></div>
-      <div id="crons-list">Loading...</div>
+    <div class="sec-header">
+      <span class="title">Cron Jobs</span>
+      <div class="actions">
+        <button class="sec-btn" onclick="loadCrons()" title="Refresh">&#8635;</button>
+      </div>
+    </div>
+    <div class="sec-body" id="crons-body">
+      <div class="loading">Loading...</div>
     </div>
 
     <!-- Briefing -->
-    <div id="briefing-panel" class="draggable-panel" data-panel="briefing-panel" draggable="false">
-      <div class="panel-label"><span class="drag-handle">&#9776;</span>🌅 Briefing <button id="briefing-regen-btn" title="Regenerate briefing" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.65rem;padding:0 2px;margin-left:4px;">&#8635;</button></div>
-      <div id="briefing-text" style="font-size:0.72rem;color:var(--muted)">Loading...</div>
+    <div class="sec-header">
+      <span class="title">Briefing</span>
+      <div class="actions">
+        <button class="sec-btn" id="briefing-regen" title="Regenerate">&#8635;</button>
+      </div>
+    </div>
+    <div class="sec-body" id="briefing-body" style="overflow-y:auto;">
+      <div id="briefing-content">Loading...</div>
       <div id="briefing-meta"></div>
     </div>
 
-    <!-- Command -->
-    <div id="command-section" class="draggable-panel" data-panel="command-section" draggable="false">
-      <div class="panel-label"><span class="drag-handle">&#9776;</span>⌨️ Command</div>
-      <input id="cmd-input" type="text" placeholder="Ask Hermes anything..." autocomplete="off" />
-      <div id="cmd-response"></div>
-    </div>
-
   </div>
 
-  <!-- ── Center Column ─────────────────────────────────────── -->
+  <!-- ── CENTER COLUMN ─────────────────────────────────────── -->
   <div id="center-col">
-
-    <!-- Feed -->
-    <div id="feed-panel">
-      <div id="feed-header">
-        📡 Live Feed
-        <span style="margin-left:auto;font-size:0.62rem;font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">30s refresh</span>
+    <div class="sec-header">
+      <span class="title">Terminal</span>
+      <div class="actions">
+        <button class="sec-btn" onclick="clearTerminal()" title="Clear">CLR</button>
       </div>
-      <ul id="feed-list"><li id="feed-empty">No events yet...</li></ul>
     </div>
-
+    <div id="terminal-wrap">
+      <div id="terminal-output"></div>
+      <div id="cmd-input-wrap">
+        <span id="cmd-prompt-label">&gt;</span>
+        <input id="cmd-input" type="text" placeholder="Ask Hermes, or type /help for commands..." autocomplete="off" />
+      </div>
+    </div>
+    <div id="feed-mini">
+      <span style="color:var(--muted);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;flex-shrink:0;">Feed</span>
+      <div id="mini-feed" style="display:flex;gap:12px;overflow:hidden;"></div>
+    </div>
   </div>
 
-  <!-- ── Right Column ─────────────────────────────────────── -->
+  <!-- ── RIGHT COLUMN ──────────────────────────────────────── -->
   <div id="right-col">
 
-    <!-- Tab Bar -->
     <div id="tab-bar">
-      <button class="tab-btn active" onclick="switchTab('graph')" id="tab-graph">🧠 Graph</button>
-      <button class="tab-btn" onclick="switchTab('search')" id="tab-search">🔍 Search</button>
-      <button class="tab-btn" onclick="switchTab('paperclip')" id="tab-paperclip">📋 Issues</button>
-      <button class="tab-btn" onclick="switchTab('skills')" id="tab-skills">⚡ Skills</button>
+      <button class="tab active" id="tab-graph" onclick="switchTab('graph')">Graph</button>
+      <button class="tab" id="tab-history" onclick="switchTab('history')">History</button>
+      <button class="tab" id="tab-paperclip" onclick="switchTab('paperclip')">Issues</button>
+      <button class="tab" id="tab-skills" onclick="switchTab('skills')">Skills</button>
     </div>
 
-    <!-- Graph Panel -->
+    <!-- Graph -->
     <div class="tab-panel active" id="panel-graph">
-      <div class="tab-panel-header">Entity Knowledge Graph — click nodes to see what Hermes knows</div>
-      <canvas id="graph-canvas" style="flex:1;cursor:grab;"></canvas>
-      <div id="graph-detail" style="padding:8px 12px;border-top:1px solid var(--border);font-size:0.7rem;min-height:60px;background:var(--surface);color:var(--muted);line-height:1.4;">
-        Click any node to explore connections
+      <canvas id="graph-canvas" style="flex:1;min-height:0;"></canvas>
+      <div id="graph-detail">
+        <span class="detail-empty">Click any node to explore connections</span>
       </div>
     </div>
 
-    <!-- Search Panel -->
-    <div class="tab-panel" id="panel-search">
-      <div id="search-input-wrap">
+    <!-- History -->
+    <div class="tab-panel" id="panel-history">
+      <div id="search-bar">
         <input id="search-input" type="text" placeholder="Search conversation history..." onkeydown="if(event.key==='Enter')doSearch()" />
-        <button id="search-btn" onclick="doSearch()">Search</button>
+        <button id="search-go" onclick="doSearch()">GO</button>
       </div>
       <div id="search-results">
-        <div id="search-empty">Type a query above to search your conversation history</div>
+        <div class="hist-empty">Type a query to search</div>
       </div>
     </div>
 
-    <!-- Paperclip Issues Panel -->
+    <!-- Paperclip Issues -->
     <div class="tab-panel" id="panel-paperclip">
-      <div class="tab-panel-header">
-        📋 Paperclip Issues
-        <div style="float:right;display:flex;gap:4px;">
-          <button onclick="loadPaperclipIssues('')" id="pc-filter-all" class="pc-filter-btn">All</button>
-          <button onclick="loadPaperclipIssues('blocked')" id="pc-filter-blocked" class="pc-filter-btn">Blocked</button>
-          <button onclick="loadPaperclipIssues('in_progress')" id="pc-filter-progress" class="pc-filter-btn">In Progress</button>
+      <div id="paperclip-filters">
+        <button class="pc-filter active" data-filter="" onclick="loadIssues('')">All</button>
+        <button class="pc-filter" data-filter="blocked" onclick="loadIssues('blocked')">Blocked</button>
+        <button class="pc-filter" data-filter="todo" onclick="loadIssues('todo')">Todo</button>
+        <button class="pc-filter" data-filter="in_progress" onclick="loadIssues('in_progress')">Active</button>
+      </div>
+      <div id="paperclip-list">
+        <div class="loading">Loading...</div>
+      </div>
+      <div id="paperclip-goals">
+        <div class="goals-header">Goals</div>
+        <div id="goals-list">
+          <div class="loading" style="padding:6px 10px;">Loading...</div>
         </div>
       </div>
-      <div id="paperclip-issues" style="flex:1;overflow-y:auto;padding:6px 10px;">
-        <div style="font-size:0.72rem;color:var(--muted);padding:10px 0;text-align:center;">Loading...</div>
-      </div>
-      <div id="paperclip-goals" style="border-top:1px solid var(--border);max-height:160px;overflow-y:auto;padding:6px 10px;">
-        <div style="font-size:0.62rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Goals</div>
-        <div id="paperclip-goals-list" style="font-size:0.68rem;color:var(--muted);">Loading...</div>
-      </div>
     </div>
 
-    <!-- Skills Panel -->
+    <!-- Skills -->
     <div class="tab-panel" id="panel-skills">
-      <div class="tab-panel-header">
-        Available skills
-        <input id="skills-filter" type="text" placeholder="Filter skills…" oninput="filterSkillsList()" style="margin-left:8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:0.62rem;color:var(--text);width:140px;" />
+      <div id="skills-filter-wrap">
+        <input id="skills-filter-input" type="text" placeholder="Filter skills..." oninput="filterSkills()" />
       </div>
-      <div id="skills-list">Loading...</div>
+      <div id="skills-list">
+        <div class="loading">Loading...</div>
+      </div>
     </div>
 
   </div>
@@ -603,1101 +872,881 @@
 
 <!-- ── Command Palette ──────────────────────────────────────────────────────── -->
 <div id="palette-overlay" onclick="if(event.target===this)closePalette()">
-  <div id="palette">
-    <div id="palette-input-wrap">
-      <span class="icon">⚡</span>
-      <input id="palette-input" type="text" placeholder="Search skills, actions, history..." autocomplete="off" oninput="filterPalette()" onkeydown="if(event.key==='Escape')closePalette();else if(event.key==='Enter')executeSelected()" />
-      <span id="palette-hint" class="kbd">ESC</span>
+  <div id="palette-box">
+    <div id="palette-input-row">
+      <span id="palette-icon">&#9654;</span>
+      <input id="palette-input" type="text" placeholder="Skills, actions, commands..." autocomplete="off"
+        oninput="filterPalette()" onkeydown="paletteKeydown(event)" />
     </div>
     <div id="palette-results"></div>
     <div id="palette-footer">
-      <span><span class="kbd">↑↓</span> navigate</span>
-      <span><span class="kbd">↵</span> execute</span>
-      <span><span class="kbd">ESC</span> close</span>
+      <span><kbd>&#8593;&#8595;</kbd> navigate</span>
+      <span><kbd>&#8629;</kbd> execute</span>
+      <span><kbd>ESC</kbd> close</span>
     </div>
   </div>
 </div>
 
 <script>
-  /* ══════════════════════════════════════════════════════════════
-     STATE
-  ══════════════════════════════════════════════════════════════ */
-  const API = '';
-  let eventSource;
-  let _cmdController = null;
-  let _graphData = null;
-  let _cronJobs = [];  // cached for command palette
-  let _selectedPaletteIdx = 0;
-  let _paletteItems = [];
-  let _searchCache = {};
+/* ══════════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════════ */
+const API = '';
+const feedEvents = [];
+let _graphData = null;
+let _cronJobs = [];
+let _skillsCatalog = [];
+let _pcIssuesCache = [];
+let _pcFilter = '';
+let _openSession = null;
+let _openIssue = null;
+let _cmdHistory = JSON.parse(localStorage.getItem('mc_cmd_history') || '[]');
+let _cmdHistoryIdx = -1;
+let _cmdController = null;
+let _paletteItems = [];
+let _paletteIdx = 0;
+let _eventCount = 0;
 
-  /* ══════════════════════════════════════════════════════════════
-     HELPERS
-  ══════════════════════════════════════════════════════════════ */
-  const $ = id => document.getElementById(id);
+/* ══════════════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
 
-  function api(path, method, body) {
-    return fetch(API + path, {
-      method: method || 'GET',
-      headers: body ? { 'Content-Type': 'application/json' } : {},
-      body: body ? JSON.stringify(body) : undefined,
-    })
-      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .catch(e => ({ ok: false, error: e.message }));
+function api(path, method, body) {
+  return fetch(API + path, {
+    method: method || 'GET',
+    headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  }).then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+    .catch(e => ({ ok: false, error: e.message }));
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* ── Clock ─────────────────────────────────────────────── */
+function tickClock() {
+  $('clock').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+}
+setInterval(tickClock, 1000); tickClock();
+
+/* ── Connection ────────────────────────────────────────── */
+function updateConn(ok) {
+  const dot = $('conn-dot');
+  const label = $('conn-label');
+  if (ok) { dot.className = 'conn-dot live'; label.textContent = 'Live'; }
+  else { dot.className = 'conn-dot dead'; label.textContent = 'Offline'; }
+}
+
+/* ── Mini feed ────────────────────────────────────────── */
+function addMiniFeed(type, msg) {
+  feedEvents.unshift({ type, msg, time: new Date().toLocaleTimeString('en-US', { hour12: false }) });
+  if (feedEvents.length > 8) feedEvents.pop();
+  $('mini-feed').innerHTML = feedEvents.slice(0, 5).map(e =>
+    `<div class="feed-entry ${e.type}"><span class="type">${e.type}</span>${esc(e.msg)}</div>`
+  ).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TABS
+══════════════════════════════════════════════════════════════ */
+function switchTab(name) {
+  $$('.tab').forEach(t => t.classList.remove('active'));
+  $$('.tab-panel').forEach(p => p.classList.remove('active'));
+  $(`tab-${name}`).classList.add('active');
+  $(`panel-${name}`).classList.add('active');
+  if (name === 'graph') resizeCanvas();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   METRIC GAUGES
+══════════════════════════════════════════════════════════════ */
+function setGauge(id, value, cls) {
+  const el = $(id);
+  if (el) { el.textContent = value; el.className = 'gauge-value' + (cls ? ' ' + cls : ''); }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   STATUS
+══════════════════════════════════════════════════════════════ */
+async function loadStatus() {
+  const d = await api('/api/status');
+  const body = $('status-body');
+  if (!d.ok) { body.innerHTML = '<div class="err-msg">Failed to load status</div>'; updateConn(false); return; }
+  updateConn(true);
+  const s = d.data;
+  setGauge('g-hermes-version', 'v' + s.version);
+  setGauge('g-pid', s.gateway_pid);
+  let html = '';
+  for (const [name, info] of Object.entries(s.platforms)) {
+    const dotCls = info.state === 'connected' || info.state === 'running' ? 'ok'
+      : info.state === 'error' || info.state === 'disconnected' ? 'err' : 'warn';
+    const stateCls = info.state === 'connected' || info.state === 'running' ? 'ok' : info.state === 'error' ? 'err' : '';
+    html += `<div class="platform-row">
+      <div class="pname"><div class="pdot ${dotCls}"></div>${esc(name)}</div>
+      <div class="pstate ${stateCls}">${esc(info.state)}</div>
+    </div>`;
+    if (info.error) html += `<div class="perror">&#9654; ${esc(info.error)}</div>`;
+  }
+  body.innerHTML = html;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SESSIONS
+══════════════════════════════════════════════════════════════ */
+async function loadSessions() {
+  const d = await api('/api/sessions');
+  const body = $('sessions-body');
+  setGauge('g-sessions', d.ok && d.data ? d.data.length : '—');
+  if (!d.ok || !d.data || d.data.length === 0) {
+    body.innerHTML = '<div class="empty-msg">No sessions</div>'; return;
+  }
+  body.innerHTML = d.data.slice(0, 10).map(s => {
+    const icon = s.platform === 'discord' ? 'DC' : s.platform === 'telegram' ? 'TG' : 'API';
+    const updated = s.updated_at ? s.updated_at.slice(0, 16).replace('T', ' ') : '—';
+    const tokens = s.total_tokens ? `${(s.total_tokens/1000).toFixed(1)}k` : '';
+    return `<div class="session-row" id="sess-${s.session_id}" onclick="toggleSession('${s.session_id}')">
+      <div class="session-row-header">
+        <span class="sess-platform">${icon}</span>
+        <span class="sess-name">${esc(s.display_name || s.key || '—')}</span>
+        <span class="sess-msgs">${s.message_count || 0}msg</span>
+      </div>
+      <div class="sess-meta">${updated}${tokens ? ' · ' + tokens + 'tok' : ''}</div>
+      <div class="session-msgs-list" id="sess-msgs-${s.session_id}" style="display:none;"></div>
+    </div>`;
+  }).join('');
+}
+
+async function toggleSession(sessionId) {
+  const row = $('sess-' + sessionId);
+  const msgDiv = $('sess-msgs-' + sessionId);
+  if (!row || !msgDiv) return;
+
+  if (_openSession === sessionId) {
+    msgDiv.style.display = 'none';
+    row.classList.remove('open');
+    _openSession = null;
+    return;
   }
 
-  /* ── Clock ─────────────────────────────────────────────── */
-  function setClock() {
-    $('clock').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
-  }
-  setInterval(setClock, 1000); setClock();
-
-  /* ── Connection ────────────────────────────────────────── */
-  function updateConnection(ok) {
-    const dot = $('conn-dot');
-    const label = $('conn-label');
-    if (ok) {
-      dot.className = 'status-dot dot-green';
-      label.textContent = 'Connected';
-    } else {
-      dot.className = 'status-dot dot-red';
-      label.textContent = 'Disconnected';
-    }
+  // Close previous
+  if (_openSession) {
+    const prev = $('sess-' + _openSession);
+    const prevDiv = $('sess-msgs-' + _openSession);
+    if (prev) prev.classList.remove('open');
+    if (prevDiv) prevDiv.style.display = 'none';
   }
 
-  /* ── Tabs ─────────────────────────────────────────────── */
-  function switchTab(name) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    $(`tab-${name}`).classList.add('active');
-    $(`panel-${name}`).classList.add('active');
+  row.classList.add('open');
+  msgDiv.style.display = 'block';
+  msgDiv.innerHTML = '<div style="padding:4px 0;font-size:9px;color:var(--muted)">Loading...</div>';
+  _openSession = sessionId;
+
+  const d = await api(`/api/sessions/${sessionId}/messages?limit=8`);
+  if (!d.ok || !d.data || d.data.length === 0) {
+    msgDiv.innerHTML = '<div style="padding:4px 0;font-size:9px;color:var(--muted)">No messages</div>'; return;
+  }
+  msgDiv.innerHTML = d.data.slice(0, 6).map(m => {
+    const roleColor = m.role === 'user' ? 'user' : m.role === 'assistant' ? 'assistant' : 'tool';
+    const ts = m.timestamp ? new Date(m.timestamp * 1000).toISOString().slice(11, 16) : '';
+    const content = m.content ? esc(m.content).replace(/\n/g, '<br>') : '<em style="color:var(--muted)">(empty)</em>';
+    return `<div class="msg-item">
+      <div class="msg-role ${roleColor}">${esc(m.role)} ${ts ? '· ' + ts : ''}</div>
+      <div class="msg-content">${content}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CRON JOBS
+══════════════════════════════════════════════════════════════ */
+async function loadCrons() {
+  const d = await api('/api/cron-jobs');
+  const body = $('crons-body');
+  const strip = $('strip-jobs');
+  if (!d.ok || !d.data) { body.innerHTML = '<div class="err-msg">Failed</div>'; return; }
+  setGauge('g-crons', d.data.length);
+  _cronJobs = d.data;
+
+  if (d.data.length === 0) {
+    body.innerHTML = '<div class="empty-msg">No cron jobs</div>';
+    strip.innerHTML = '<span style="color:var(--muted);font-size:10px">None scheduled</span>';
+    return;
   }
 
-  /* ══════════════════════════════════════════════════════════════
-     SYSTEM STATUS
-  ══════════════════════════════════════════════════════════════ */
-  function colorFor(state) {
-    if (state === 'connected' || state === 'running') return 'dot-green';
-    if (state === 'error' || state === 'disconnected') return 'dot-red';
-    return 'dot-yellow';
+  body.innerHTML = d.data.slice(0, 15).map(j => {
+    const statusCls = j.last_status === 'error' ? 'err' : j.last_status === 'ok' ? 'ok' : '';
+    const next = j.next_run ? j.next_run.slice(11, 16) : '—';
+    return `<div class="cron-row">
+      <div class="cron-row-top">
+        <span class="cron-name" title="${esc(j.name)}">${esc(j.name)}</span>
+        <button class="cron-run-btn" onclick="runCron('${esc(j.id)}','${esc(j.name.replace(/'/g,""))}')">RUN</button>
+      </div>
+      <div class="cron-meta">
+        <span class="cron-sched">${esc(j.schedule)}</span>
+        <span class="cron-status ${statusCls}">${j.last_status || 'never'}</span>
+        <span class="cron-next">next ${next}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Strip: next 5
+  const sorted = [...d.data].filter(j => j.next_run).sort((a, b) => a.next_run.localeCompare(b.next_run));
+  strip.innerHTML = sorted.slice(0, 5).map(j =>
+    `<div class="strip-job" onclick="runCron('${esc(j.id)}','${esc(j.name.replace(/'/g,""))}')">
+      <span class="run-icon">&#9654;</span>
+      <span class="job-name">${esc(j.name)}</span>
+      <span class="job-time">${j.next_run ? j.next_run.slice(11,16) : ''}</span>
+    </div>`
+  ).join('') || '<span style="color:var(--muted);font-size:10px">None</span>';
+}
+
+async function runCron(id, name) {
+  addMiniFeed('cron', 'Triggering: ' + name);
+  const d = await api(`/api/cron-jobs/${encodeURIComponent(id)}/trigger`, 'POST');
+  if (d && d.ok) addMiniFeed('cron', 'Started: ' + name);
+  else addMiniFeed('error', 'Failed: ' + name);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BRIEFING
+══════════════════════════════════════════════════════════════ */
+async function loadBriefing() {
+  const d = await api('/api/briefing');
+  const content = $('briefing-content');
+  const meta = $('briefing-meta');
+  if (!d.ok || !d.data) { content.textContent = 'No briefing'; return; }
+  const b = d.data;
+  const mb = b.morning_briefing;
+  const crons = b.pending_crons || [];
+  if (mb && mb.preview) {
+    content.textContent = mb.preview.slice(0, 500);
+    const sid = mb.session_id || '';
+    const m = sid.match(/(\d{8})_(\d{6})/);
+    if (m) meta.textContent = `Generated ${m[1].slice(0,4)}-${m[1].slice(4,6)}-${m[1].slice(6,8)} ${m[2].slice(0,2)}:${m[2].slice(2,4)} UTC · ${crons.length} crons`;
+    else meta.textContent = `${crons.length} crons pending`;
+  } else if (crons.length) {
+    content.innerHTML = 'Pending: ' + crons.slice(0, 4).map(c => `<span style="color:var(--cyan)">${esc(c.name)}</span>`).join(' · ');
+    meta.textContent = `${crons.length} jobs in queue`;
+  } else {
+    content.textContent = 'No briefing or crons';
   }
+}
 
-  async function loadStatus() {
-    const d = await api('/api/status');
-    if (!d.ok) { updateConnection(false); return; }
-    updateConnection(true);
-    const s = d.data;
-    $('gateway-info').innerHTML = `<b>v${s.version}</b> · PID ${s.gateway_pid} · ${s.gateway_state}`;
-    let html = '';
-    for (const [name, info] of Object.entries(s.platforms)) {
-      const err = info.error ? ` <span style="color:var(--red);font-size:0.65rem">⚠</span>` : '';
-      html += `<div class="platform-row">
-        <span class="platform-name"><span class="status-dot ${colorFor(info.state)}"></span>${name}</span>
-        <span style="color:var(--muted);font-size:0.7rem">${info.state}${err}</span>
-      </div>`;
-    }
-    $('platform-list').innerHTML = html;
-  }
+/* ══════════════════════════════════════════════════════════════
+   TERMINAL
+══════════════════════════════════════════════════════════════ */
+function addTermCmd(text) {
+  const out = $('terminal-output');
+  out.innerHTML += `<div class="term-cmd"><span class="prompt">&gt;</span> <span class="cmd-text">${esc(text)}</span></div>`;
+  out.scrollTop = out.scrollHeight;
+}
 
-  /* ══════════════════════════════════════════════════════════════
-     SESSIONS
-  ══════════════════════════════════════════════════════════════ */
-  async function loadSessions() {
-    const d = await api('/api/sessions');
-    const list = $('sessions-list');
-    if (!d.ok || !d.data || d.data.length === 0) {
-      list.innerHTML = '<p style="font-size:0.7rem;color:var(--muted)">No sessions</p>';
-      return;
-    }
-    list.innerHTML = d.data.slice(0, 6).map(s => {
-      const icon = s.platform === 'discord' ? '💬' : s.platform === 'telegram' ? '✈️' : '🔌';
-      const updated = s.updated_at ? s.updated_at.slice(0, 16).replace('T', ' ') : '—';
-      const tokens = s.total_tokens
-        ? `· ${Math.round(s.total_tokens/100)/10}k tok`
-        : s.last_prompt_tokens ? `· ~${Math.round(s.last_prompt_tokens/100)/10}k tok*` : '';
-      const name = (s.display_name || s.key || '—').length > 50
-        ? (s.display_name || s.key || '—').slice(0, 50) + '…'
-        : (s.display_name || s.key || '—');
-      return `<div class="session-item" id="session-${s.session_id}" data-session="${s.session_id}" onclick="expandSession('${s.session_id}', this)">
-        <div class="session-platform">${icon} ${s.platform}</div>
-        <div class="session-name">${name}</div>
-        <div class="session-meta">${s.message_count || 0} msgs ${tokens} · ${updated}</div>
-        <div class="session-detail" id="session-detail-${s.session_id}" style="display:none;"></div>
-      </div>`;
-    }).join('');
-    // Footnote for approximate token counts
-    if (d.data.some(s => s.last_prompt_tokens && !s.total_tokens)) {
-      list.innerHTML += '<p style="font-size:0.6rem;color:var(--muted);margin-top:6px">* prompt tokens (total not reported by Hermes)</p>';
-    }
-  }
+function addTermResponse(text, cls) {
+  const out = $('terminal-output');
+  out.innerHTML += `<div class="term-response ${cls || ''}">${text}</div>`;
+  out.scrollTop = out.scrollHeight;
+}
 
-  let _expandedSession = null;
-  async function expandSession(sessionId, el) {
-    const detail = $('session-detail-' + sessionId);
-    if (!detail) return;
-    if (_expandedSession === sessionId) {
-      // Collapse
-      detail.style.display = 'none';
-      el.classList.remove('session-expanded');
-      _expandedSession = null;
-      return;
-    }
-    // Collapse previous
-    if (_expandedSession) {
-      const prev = $('session-detail-' + _expandedSession);
-      const prevEl = $('session-' + _expandedSession);
-      if (prev) prev.style.display = 'none';
-      if (prevEl) prevEl.classList.remove('session-expanded');
-    }
-    detail.style.display = 'block';
-    detail.innerHTML = '<span style="font-size:0.65rem;color:var(--yellow)">Loading…</span>';
-    el.classList.add('session-expanded');
-    _expandedSession = sessionId;
-    // Fetch messages
-    try {
-      const d = await api(`/api/sessions/${sessionId}/messages?limit=8`);
-      if (!d.ok || !d.data || d.data.length === 0) {
-        detail.innerHTML = '<span style="font-size:0.65rem;color:var(--muted)">No messages</span>';
-        return;
-      }
-      detail.innerHTML = d.data.map(m => {
-        const roleColor = m.role === 'user' ? 'var(--accent)' : m.role === 'assistant' ? 'var(--green)' : 'var(--muted)';
-        const roleIcon = m.role === 'user' ? '👤' : m.role === 'assistant' ? '🤖' : '🔧';
-        const ts = m.timestamp ? new Date(m.timestamp * 1000).toISOString().slice(11, 16) : '';
-        const content = m.content ? m.content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') : '<em style="color:var(--muted)">(empty)</em>';
-        return `<div style="margin:4px 0;padding:4px 6px;background:var(--surface2);border-radius:4px;font-size:0.62rem;line-height:1.4;">
-          <span style="color:${roleColor};font-weight:600;">${roleIcon} ${m.role}</span> ${ts ? `<span style="color:var(--muted);font-size:0.58rem;">${ts}</span>` : ''}
-          <div style="color:var(--text);margin-top:2px;white-space:pre-wrap;">${content}</div>
-        </div>`;
-      }).join('');
-    } catch(e) {
-      detail.innerHTML = '<span style="font-size:0.65rem;color:var(--red)">Failed to load</span>';
-    }
-  }
+function clearTerminal() {
+  $('terminal-output').innerHTML = '';
+}
 
-  /* ══════════════════════════════════════════════════════════════
-     CRON JOBS
-  ══════════════════════════════════════════════════════════════ */
-  async function loadCrons() {
-    const d = await api('/api/cron-jobs');
-    const list = $('crons-list');
-    const count = $('crons-count');
-    if (!d.ok || !d.data || d.data.length === 0) {
-      list.innerHTML = '<p style="font-size:0.7rem;color:var(--muted)">No cron jobs</p>';
-      if (count) count.textContent = '';
-      _cronJobs = [];
-      return;
-    }
-    _cronJobs = d.data;  // cache for palette
-    if (count) count.textContent = `(${d.data.length})`;
-    list.innerHTML = d.data.slice(0, 12).map(j => {
-      const statusClass = j.last_status === 'error' ? 'cron-status-err'
-        : j.last_status === 'ok' ? 'cron-status-ok'
-        : 'cron-status-none';
-      const statusLabel = j.last_status === 'error' ? '⚠️ error'
-        : j.last_status === 'ok' ? '✓ ok'
-        : '—';
-      const err = j.last_error ? `<div class="cron-warn">⚠ ${j.last_error.slice(0, 60)}</div>` : '';
-      const lastRun = j.last_run ? `Last: ${j.last_run.slice(0, 16)}` : 'Never run';
-      return `<div class="cron-item">
-        <div style="flex:1;min-width:0">
-          <div class="cron-name truncate" title="${j.name}">${j.name}</div>
-          <div class="cron-schedule">${j.schedule}</div>
-          <div class="cron-last-run"><span class="${statusClass}">${statusLabel}</span> · ${lastRun}</div>
-          ${err}
-        </div>
-        <button class="cron-run-btn" onclick="runCron('${j.id}', '${j.name.replace(/'/g, "\\'")}')" title="Run now">▶ Run</button>
-      </div>`;
-    }).join('');
-  }
-
-  async function runCron(jobId, jobName) {
-    addFeed('cron', `Triggering: ${jobName}`);
-    const d = await api(`/api/cron-jobs/${encodeURIComponent(jobId)}/trigger`, 'POST');
-    if (d && d.ok) {
-      addFeed('cron', `Started: ${jobName}`);
-    } else {
-      addFeed('error', `Failed to trigger ${jobName}: ${(d && d.error) || 'unknown'}`);
-    }
-  }
-
-  /* ══════════════════════════════════════════════════════════════
-     CRON STRIP
-  ══════════════════════════════════════════════════════════════ */
-  async function loadCronStrip() {
-    const d = await api('/api/cron-jobs');
-    const strip = $('strip-jobs');
-    if (!d.ok || !d.data || d.data.length === 0) {
-      strip.innerHTML = '<span style="color:var(--muted);font-size:0.65rem">No upcoming crons</span>';
-      return;
-    }
-    // Show next 6 crons sorted by next_run
-    const sorted = [...d.data].filter(j => j.next_run).sort((a, b) => a.next_run.localeCompare(b.next_run));
-    const soon = sorted.slice(0, 6);
-    strip.innerHTML = soon.map(j => {
-      const time = j.next_run ? j.next_run.slice(11, 16) : '';
-      return `<div class="strip-job" onclick="runCronByName('${j.name.replace(/'/g, "\\'")}')" title="Click to run now">${j.name}<span class="job-time">${time}</span></div>`;
-    }).join('');
-  }
-
-  /* ══════════════════════════════════════════════════════════════
-     BRIEFING
-  ══════════════════════════════════════════════════════════════ */
-  async function loadBriefing() {
-    const d = await api('/api/briefing');
-    const text = $('briefing-text');
-    const meta = $('briefing-meta');
-    if (!d.ok || !d.data) {
-      text.textContent = 'No briefing available';
-      return;
-    }
-    const b = d.data;
-    const mb = b.morning_briefing;
-    const crons = b.pending_crons || [];
-    if (mb && mb.preview) {
-      text.textContent = mb.preview.slice(0, 300) + (mb.preview.length > 300 ? '…' : '');
-      const sid = mb.session_id || '';
-      const dp = sid.match(/(\d{8})_(\d{6})/);
-      if (dp) {
-        const [dStr, tStr] = [dp[1], dp[2]];
-        meta.textContent = `Generated ${dStr.slice(0,4)}-${dStr.slice(4,6)}-${dStr.slice(6,8)} ${tStr.slice(0,2)}:${tStr.slice(2,4)} UTC · ${crons.length} crons pending`;
-      }
-    } else if (crons.length) {
-      text.innerHTML = 'Upcoming: ' + crons.slice(0, 3).map(c => `<span style="color:var(--accent)">${c.name}</span>`).join(' · ');
-      meta.textContent = `${crons.length} cron jobs pending`;
-    } else {
-      text.textContent = 'No briefing or pending crons';
-    }
-  }
-
-  // Briefing regenerate button
-  $('briefing-regen-btn').addEventListener('click', async () => {
-    const btn = $('briefing-regen-btn');
-    const text = $('briefing-text');
-    const meta = $('briefing-meta');
-    btn.style.color = 'var(--green)';
-    btn.disabled = true;
-    text.textContent = 'Regenerating...';
-    text.style.color = 'var(--yellow)';
-    meta.textContent = '';
-    await triggerCronByName('morning-briefing');
-    const start = Date.now();
-    // Poll until a new briefing session appears (session_id timestamp > start)
-    const check = async () => {
-      if (Date.now() - start > 60000) {
-        text.textContent = 'Regeneration timed out — check cron status manually';
-        text.style.color = 'var(--red)';
-        btn.style.color = 'var(--muted)';
-        btn.disabled = false;
-        return;
-      }
-      await loadBriefing();
-      const b = (await (await fetch(API + '/api/briefing')).json()).data;
-      const mb = b && b.morning_briefing;
-      if (mb && mb.session_id) {
-        // Extract timestamp from session_id: cron_<hash>_<YYYYMMDD>_<HHMMSS>
-        const m = mb.session_id.match(/(\d{8})_(\d{6})$/);
-        if (m) {
-          const d = m[1], t = m[2];
-          const ts = new Date(`${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}T${t.slice(0,2)}:${t.slice(2,4)}:${t.slice(4,6)}Z`).getTime();
-          if (ts > start) {
-            // New briefing detected
-            btn.style.color = 'var(--muted)';
-            btn.disabled = false;
-            text.style.color = 'var(--text)';
-            return;
-          }
-        }
-      }
-      setTimeout(check, 3000);
-    };
-    setTimeout(check, 8000);
-  });
-
-  /* ══════════════════════════════════════════════════════════════
-     COMMAND BAR
-  ══════════════════════════════════════════════════════════════ */
-  let _cmdHistory = JSON.parse(localStorage.getItem('mc_cmd_history') || '[]');
-  let _cmdHistoryIdx = -1;
-  let _skillsCatalog = [];  // cached skills for filter
-
-  $('cmd-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      if ($('cmd-input').value.trim()) {
-        _cmdHistory.unshift($('cmd-input').value.trim());
-        if (_cmdHistory.length > 50) _cmdHistory.pop();
-        _cmdHistoryIdx = -1;
-        try { localStorage.setItem('mc_cmd_history', JSON.stringify(_cmdHistory.slice(0, 50))); } catch(e) {}
-      }
-      submitCmd();
-    } else if (e.key === 'ArrowUp') {
+$('cmd-input').addEventListener('keydown', async e => {
+  if (e.key !== 'Enter') {
+    if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (_cmdHistory.length === 0) return;
       _cmdHistoryIdx = Math.min(_cmdHistoryIdx + 1, _cmdHistory.length - 1);
-      $('cmd-input').value = _cmdHistory[_cmdHistoryIdx];
-      $('cmd-input').setSelectionRange(9999, 9999);
+      $('cmd-input').value = _cmdHistory[_cmdHistoryIdx] || '';
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (_cmdHistoryIdx <= 0) { _cmdHistoryIdx = -1; $('cmd-input').value = ''; return; }
       _cmdHistoryIdx--;
-      $('cmd-input').value = _cmdHistory[_cmdHistoryIdx];
-      $('cmd-input').setSelectionRange(9999, 9999);
+      $('cmd-input').value = _cmdHistory[_cmdHistoryIdx] || '';
     }
-  });
+    return;
+  }
 
-  async function submitCmd() {
-    const input = $('cmd-input');
-    const resp = $('cmd-response');
-    const prompt = input.value.trim();
-    if (!prompt) return;
-    if (_cmdController) _cmdController.abort();
-    _cmdController = new AbortController();
-    resp.textContent = '🤖 Thinking…';
-    resp.className = '';
-    addFeed('cmd', prompt.slice(0, 70));
-    try {
-      const res = await fetch(API + '/api/command/stream', {
-        method: 'POST', signal: _cmdController.signal,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      });
-      if (!res.ok) {
-        const d = await res.json();
-        resp.textContent = 'Error: ' + (d.error || res.status);
-        resp.className = 'error';
-        return;
-      }
-      resp.textContent = '';
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let evtType = null;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
-          if (line.startsWith('event: ')) evtType = line.slice(7).trim();
-          else if (line.startsWith('data: ')) {
-            const payload = line.slice(6).trim();
-            if (evtType === 'token' && payload) resp.textContent += payload;
-            else if (evtType === 'done') {
-              addFeed('hermes', resp.textContent.slice(0, 80));
-              input.value = '';
-              evtType = null;
-            } else if (evtType === 'error' && payload) {
-              resp.textContent = 'Error: ' + payload;
-              resp.className = 'error';
-            }
+  const input = $('cmd-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  // Save history
+  _cmdHistory.unshift(text);
+  if (_cmdHistory.length > 100) _cmdHistory.pop();
+  _cmdHistoryIdx = -1;
+  try { localStorage.setItem('mc_cmd_history', JSON.stringify(_cmdHistory.slice(0, 100))); } catch(e) {}
+
+  // Handle built-in commands
+  if (text === '/clear' || text === '/clr') { clearTerminal(); input.value = ''; return; }
+  if (text === '/help') {
+    addTermCmd(text);
+    addTermResponse(
+      'Available commands:\n' +
+      '  /clear, /clr     Clear terminal\n' +
+      '  /cron            List cron jobs\n' +
+      '  /sessions        List sessions\n' +
+      '  /graph           Switch to knowledge graph\n' +
+      '  Any other text   Ask Hermes AI', ''
+    );
+    input.value = '';
+    return;
+  }
+  if (text === '/cron') {
+    addTermCmd(text);
+    addTermResponse(_cronJobs.length === 0 ? 'No cron jobs.' :
+      _cronJobs.map(j => `${j.name} [${j.schedule}] — ${j.last_status || 'never'} ${j.next_run ? '→ ' + j.next_run.slice(11,16) : ''}`).join('\n'), '');
+    input.value = '';
+    return;
+  }
+  if (text === '/sessions') {
+    addTermCmd(text);
+    const d = await api('/api/sessions');
+    if (d.ok && d.data) {
+      addTermResponse(d.data.map(s => `${s.platform}: ${s.display_name || s.key} (${s.message_count || 0}msg)`).join('\n'), '');
+    }
+    input.value = '';
+    return;
+  }
+  if (text === '/graph') {
+    addTermCmd(text);
+    switchTab('graph');
+    input.value = '';
+    return;
+  }
+
+  // Ask Hermes
+  addTermCmd(text);
+  addMiniFeed('cmd', text.slice(0, 60));
+
+  if (_cmdController) _cmdController.abort();
+  _cmdController = new AbortController();
+
+  // Show streaming placeholder
+  const respDiv = document.createElement('div');
+  respDiv.className = 'term-response streaming';
+  respDiv.textContent = '';
+  $('terminal-output').appendChild(respDiv);
+
+  try {
+    const res = await fetch(API + '/api/command/stream', {
+      method: 'POST',
+      signal: _cmdController.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: text }),
+    });
+    if (!res.ok) { respDiv.textContent = 'Error: HTTP ' + res.status; respDiv.className = 'term-response error'; return; }
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let evtType = null;
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = dec.decode(value, { stream: true });
+      buf += chunk;
+      const lines = buf.split('\n');
+      buf = lines.pop() || '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) evtType = line.slice(7).trim();
+        else if (line.startsWith('data: ')) {
+          const payload = line.slice(6).trim();
+          if (evtType === 'token' && payload) {
+            respDiv.textContent += payload;
+            $('terminal-output').scrollTop = $('terminal-output').scrollHeight;
+          } else if (evtType === 'done') {
+            addMiniFeed('hermes', respDiv.textContent.slice(0, 60));
+            input.value = '';
+            evtType = null;
+          } else if (evtType === 'error' && payload) {
+            respDiv.textContent = 'Error: ' + payload;
+            respDiv.className = 'term-response error';
           }
         }
       }
-    } catch (e) {
-      if (e.name !== 'AbortError') {
-        resp.textContent = 'Error: ' + e.message;
-        resp.className = 'error';
-      }
+    }
+    if (!respDiv.textContent) { respDiv.textContent = '(no response)'; respDiv.className = 'term-response'; }
+  } catch(e) {
+    if (e.name !== 'AbortError') {
+      respDiv.textContent = 'Error: ' + e.message;
+      respDiv.className = 'term-response error';
     }
   }
+});
 
-  /* ══════════════════════════════════════════════════════════════
-     LIVE FEED
-  ══════════════════════════════════════════════════════════════ */
-  const feedEvents = [];
-  function addFeed(type, msg) {
-    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
-    feedEvents.unshift({ time, type, msg });
-    if (feedEvents.length > 80) feedEvents.pop();
-    renderFeed();
+/* ══════════════════════════════════════════════════════════════
+   KNOWLEDGE GRAPH
+══════════════════════════════════════════════════════════════ */
+const canvas = $('graph-canvas');
+const ctx = canvas.getContext('2d');
+
+class Graph {
+  constructor(nodes, edges) {
+    this.nodes = nodes.map((n, i) => ({
+      ...n,
+      x: n._x || Math.random() * canvas.width,
+      y: n._y || Math.random() * canvas.height,
+      vx: 0, vy: 0,
+      label: n.name.length > 18 ? n.name.slice(0, 16) + '…' : n.name,
+    }));
+    this.edges = edges.map(e => ({
+      ...e,
+      source: this.nodes.find(n => n.id === e.source) || this.nodes[0],
+      target: this.nodes.find(n => n.id === e.target) || this.nodes[0],
+    }));
   }
-  function renderFeed() {
-    if (feedEvents.length === 0) {
-      $('feed-list').innerHTML = '<li id="feed-empty">No events yet...</li>';
-      return;
-    }
-    $('feed-list').innerHTML = feedEvents.slice(0, 50).map(e =>
-      `<li>
-        <span class="feed-time">${e.time}</span>
-        <span class="feed-type ${e.type}">${e.type}</span>
-        <span class="feed-msg">${e.msg}</span>
-      </li>`
-    ).join('');
-  }
 
-  /* ══════════════════════════════════════════════════════════════
-     KNOWLEDGE GRAPH
-  ══════════════════════════════════════════════════════════════ */
-  const canvas = $('graph-canvas');
-  const ctx = canvas.getContext('2d');
-
-  // Force-directed layout in JS
-  class Graph {
-    constructor(nodes, edges) {
-      this.nodes = nodes.map((n, i) => ({
-        ...n,
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        vx: 0, vy: 0,
-        label: n.name.length > 20 ? n.name.slice(0, 18) + '…' : n.name,
-      }));
-      this.edges = edges.map(e => ({
-        ...e,
-        source: this.nodes.find(n => n.id === e.source) || this.nodes[0],
-        target: this.nodes.find(n => n.id === e.target) || this.nodes[0],
-      }));
-    }
-
-    tick() {
-      // Repulsion between all nodes — reduced from 3000 for less jitter
-      for (let i = 0; i < this.nodes.length; i++) {
-        for (let j = i + 1; j < this.nodes.length; j++) {
-          const a = this.nodes[i], b = this.nodes[j];
-          const dx = b.x - a.x, dy = b.y - a.y;
-          const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-          const force = 1500 / (dist * dist);
-          const fx = dx / dist * force, fy = dy / dist * force;
-          a.vx -= fx; a.vy -= fy;
-          b.vx += fx; b.vy += fy;
-        }
-      }
-      // Attraction along edges — gentler spring (was 0.05, now 0.02)
-      for (const e of this.edges) {
-        const dx = e.target.x - e.source.x, dy = e.target.y - e.source.y;
+  tick() {
+    for (let i = 0; i < this.nodes.length; i++) {
+      for (let j = i + 1; j < this.nodes.length; j++) {
+        const a = this.nodes[i], b = this.nodes[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
         const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-        const force = (dist - 140) * 0.02;  // ideal edge length ~140px
-        const fx = dx / dist * force, fy = dy / dist * force;
-        e.source.vx += fx; e.source.vy += fy;
-        e.target.vx -= fx; e.target.vy -= fy;
-      }
-      // Center gravity + velocity damping — lighter damping = smoother
-      for (const n of this.nodes) {
-        n.vx += (canvas.width / 2 - n.x) * 0.0008;
-        n.vy += (canvas.height / 2 - n.y) * 0.0008;
-        n.vx *= 0.88; n.vy *= 0.88;
-        n.x += n.vx; n.y += n.vy;
-        n.x = Math.max(20, Math.min(canvas.width - 20, n.x));
-        n.y = Math.max(20, Math.min(canvas.height - 20, n.y));
+        const f = 1800 / (dist * dist);
+        a.vx -= dx/dist*f; a.vy -= dy/dist*f;
+        b.vx += dx/dist*f; b.vy += dy/dist*f;
       }
     }
-
-    draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // Edges
-      for (const e of this.edges) {
-        ctx.beginPath();
-        ctx.moveTo(e.source.x, e.source.y);
-        ctx.lineTo(e.target.x, e.target.y);
-        ctx.strokeStyle = 'rgba(59,130,246,0.25)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-      // Nodes
-      for (const n of this.nodes) {
-        const isHovered = n === _hoveredNode;
-        const r = isHovered ? 9 : 6;
-        const hue = hashColor(n.name);
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = isHovered ? `hsl(${hue},80%,60%)` : `hsl(${hue},60%,45%)`;
-        ctx.fill();
-        ctx.strokeStyle = isHovered ? '#fff' : `hsl(${hue},60%,65%)`;
-        ctx.lineWidth = isHovered ? 2 : 1;
-        ctx.stroke();
-        // Label
-        ctx.fillStyle = isHovered ? '#fff' : 'rgba(156,163,175,0.9)';
-        ctx.font = `${isHovered ? 'bold ' : ''}${isHovered ? 11 : 9}px Segoe UI, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText(n.label, n.x, n.y + r + 12);
-      }
+    for (const e of this.edges) {
+      const dx = e.target.x - e.source.x, dy = e.target.y - e.source.y;
+      const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+      const f = (dist - 130) * 0.025;
+      e.source.vx += dx/dist*f; e.source.vy += dy/dist*f;
+      e.target.vx -= dx/dist*f; e.target.vy -= dy/dist*f;
+    }
+    for (const n of this.nodes) {
+      n.vx += (canvas.width/2 - n.x) * 0.001;
+      n.vy += (canvas.height/2 - n.y) * 0.001;
+      n.vx *= 0.87; n.vy *= 0.87;
+      n.x += n.vx; n.y += n.vy;
+      n.x = Math.max(20, Math.min(canvas.width-20, n.x));
+      n.y = Math.max(20, Math.min(canvas.height-20, n.y));
     }
   }
 
-  let _graph = null;
-  let _hoveredNode = null;
-  let _selectedNode = null;
-  let _animating = false;
-  let _nodePositions = {}; // stable positions
+  draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const e of this.edges) {
+      ctx.beginPath();
+      ctx.moveTo(e.source.x, e.source.y);
+      ctx.lineTo(e.target.x, e.target.y);
+      ctx.strokeStyle = 'rgba(0,180,212,0.2)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    for (const n of this.nodes) {
+      const hover = n === _hoveredNode;
+      const r = hover ? 10 : 7;
+      const hue = hashColor(n.name);
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, Math.PI*2);
+      ctx.fillStyle = hover ? `hsl(${hue},80%,60%)` : `hsl(${hue},55%,42%)`;
+      ctx.fill();
+      ctx.strokeStyle = hover ? '#fff' : `hsl(${hue},55%,62%)`;
+      ctx.lineWidth = hover ? 2 : 1;
+      ctx.stroke();
+      ctx.fillStyle = hover ? '#fff' : 'rgba(180,180,180,0.85)';
+      ctx.font = `${hover?'bold ':''}${hover?12:10}px JetBrains Mono, monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText(n.label, n.x, n.y + r + 13);
+    }
+  }
+}
 
-  function hashColor(s) {
-    let h = 0;
-    for (const c of s) h = ((h << 5) - h) + c.charCodeAt(0);
-    return Math.abs(h) % 360;
+let _graph = null;
+let _hoveredNode = null;
+let _nodePositions = {};
+
+function hashColor(s) {
+  let h = 0;
+  for (const c of s) h = ((h<<5)-h)+c.charCodeAt(0);
+  return Math.abs(h) % 360;
+}
+
+function resizeCanvas() {
+  const panel = $('panel-graph');
+  canvas.width = panel.clientWidth;
+  canvas.height = panel.clientHeight - (canvas.nextElementSibling ? 80 : 0);
+}
+
+async function loadGraph() {
+  const d = await api('/api/graph');
+  if (!d.ok || !d.data) return;
+  const { nodes, edges } = d.data;
+  if (!nodes || !nodes.length) return;
+
+  // Restore positions
+  for (const n of nodes) {
+    if (_nodePositions[n.id]) { n._x = _nodePositions[n.id].x; n._y = _nodePositions[n.id].y; }
   }
 
-  function resizeCanvas() {
-    const panel = $('panel-graph');
-    canvas.width = panel.clientWidth;
-    canvas.height = panel.clientHeight - 32; // header
+  _graphData = d.data;
+  _graph = new Graph(nodes, edges);
+  resizeCanvas();
+  animateGraph();
+}
+
+function animateGraph() {
+  if (!_graph) return;
+  function frame() {
+    for (let i = 0; i < 3; i++) _graph.tick();
+    _graph.draw();
+    requestAnimationFrame(frame);
   }
+  frame();
+}
 
-  async function loadGraph() {
-    const d = await api('/api/graph');
-    if (!d.ok || !d.data) return;
-    const { nodes, edges } = d.data;
-    if (!nodes || !nodes.length) return;
-
-    // Preserve old positions if reloading
-    if (_graph) {
-      for (const n of nodes) {
-        if (_nodePositions[n.id]) {
-          n._x = _nodePositions[n.id].x;
-          n._y = _nodePositions[n.id].y;
-        }
-      }
-    }
-
-    _graphData = d.data;
-    _graph = new Graph(nodes, edges);
-
-    // Restore positions
-    if (_nodePositions) {
-      for (const n of _graph.nodes) {
-        if (_nodePositions[n.id]) {
-          n.x = _nodePositions[n.id].x;
-          n.y = _nodePositions[n.id].y;
-        }
-      }
-    }
-
-    resizeCanvas();
-    animateGraph();
+canvas.addEventListener('mousemove', e => {
+  if (!_graph) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  _hoveredNode = null;
+  for (const n of _graph.nodes) {
+    if ((n.x-mx)**2 + (n.y-my)**2 < 144) { _hoveredNode = n; break; }
   }
+  canvas.style.cursor = _hoveredNode ? 'pointer' : 'grab';
+});
 
-  function animateGraph() {
-    if (!_graph) return;
-    _animating = true;
-    function frame() {
-      if (!_animating) return;
-      for (let i = 0; i < 3; i++) _graph.tick();
-      _graph.draw();
-      if (_animating) requestAnimationFrame(frame);
-    }
-    frame();
+canvas.addEventListener('click', () => {
+  if (!_graph || !_hoveredNode) return;
+  const detail = $('graph-detail');
+  const related = (_graphData.edges || []).filter(e => e.source === _hoveredNode.id || e.target === _hoveredNode.id);
+  let html = `<div class="detail-entity">${esc(_hoveredNode.name)}</div>`;
+  html += `<div class="detail-type">${esc(_hoveredNode.type || 'concept')} · ${related.length} connections</div>`;
+  for (const edge of related.slice(0, 8)) {
+    const other = edge.source === _hoveredNode.id ? edge.target : edge.source;
+    const otherNode = _graph.nodes.find(n => n.id === other);
+    const label = otherNode ? otherNode.name : other;
+    html += `<div class="detail-fact">`;
+    html += `<span class="detail-rel">${esc(edge.label || '→')} </span>`;
+    html += `<span class="detail-rel-label">${esc(label)}</span>`;
+    if (edge.fact_preview) html += `<div style="font-size:9px;color:var(--muted);margin-top:1px;padding-left:8px;">${esc(edge.fact_preview.slice(0,100))}…</div>`;
+    html += `</div>`;
   }
+  if (related.length === 0) html += `<div class="detail-empty" style="margin-top:6px;">No connections yet</div>`;
+  detail.innerHTML = html;
 
-  // Mouse interaction
-  canvas.addEventListener('mousemove', e => {
-    if (!_graph) return;
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-    _hoveredNode = null;
-    for (const n of _graph.nodes) {
-      const dx = n.x - mx, dy = n.y - my;
-      if (dx*dx + dy*dy < 100) { _hoveredNode = n; break; }
-    }
-    canvas.style.cursor = _hoveredNode ? 'pointer' : 'grab';
-  });
+  // Save position
+  _nodePositions[_hoveredNode.id] = { x: _hoveredNode.x, y: _hoveredNode.y };
+});
 
-  canvas.addEventListener('click', e => {
-    if (!_graph || !_hoveredNode) return;
-    _selectedNode = _hoveredNode;
-    showNodeDetail(_selectedNode);
-  });
-
-  function showNodeDetail(node) {
-    // Find all edges involving this node
-    const related = _graphData.edges.filter(e =>
-      e.source === node.id || e.target === node.id
-    );
-    const detail = $('graph-detail');
-    let html = `<div style="color:var(--accent);font-weight:700;margin-bottom:6px">${node.name}</div>`;
-    html += `<div style="color:var(--muted);font-size:0.62rem;margin-bottom:6px">type: ${node.type || 'concept'} · ${related.length} connections</div>`;
-    for (const edge of related.slice(0, 5)) {
-      const other = edge.source === node.id ? edge.target : edge.source;
-      const otherNode = _graph.nodes.find(n => n.id === other);
-      const label = otherNode ? otherNode.name : other;
-      html += `<div style="font-size:0.65rem;margin-top:3px">
-        <span style="color:var(--amber)">${edge.label || '→'}</span>
-        <span style="color:var(--text)">${label}</span>
-        ${edge.fact_preview ? `<div style="color:var(--muted);font-size:0.6rem;margin-top:1px">${edge.fact_preview.slice(0,80)}…</div>` : ''}
-      </div>`;
-    }
-    detail.innerHTML = html;
+/* ══════════════════════════════════════════════════════════════
+   HISTORY SEARCH
+══════════════════════════════════════════════════════════════ */
+async function doSearch() {
+  const q = $('search-input').value.trim();
+  const results = $('search-results');
+  if (!q) { results.innerHTML = '<div class="hist-empty">Type a query to search</div>'; return; }
+  results.innerHTML = '<div class="loading">Searching...</div>';
+  const d = await api(`/api/history/search?q=${encodeURIComponent(q)}&limit=30`);
+  if (!d.ok || !d.data || d.data.length === 0) {
+    results.innerHTML = `<div class="hist-empty">No results for "${esc(q)}"</div>`; return;
   }
+  results.innerHTML = d.data.map(r => {
+    const ts = r.timestamp ? new Date(r.timestamp*1000).toLocaleString('en-AU', { hour12: false }) : '';
+    return `<div class="hist-result" onclick="insertSearchResult('${esc(r.content || '').replace(/'/g,"\\'")}')">
+      <div class="hist-result-header">
+        <span class="hist-source">${esc(r.source || 'unknown')}</span>
+        <span class="hist-role">${esc(r.role)}</span>
+        <span class="hist-ts">${ts}</span>
+      </div>
+      <div class="hist-content">${esc(r.content || '—')}</div>
+    </div>`;
+  }).join('');
+}
 
-  /* ══════════════════════════════════════════════════════════════
-     HISTORY SEARCH
-  ══════════════════════════════════════════════════════════════ */
-  async function doSearch() {
-    const q = $('search-input').value.trim();
-    const results = $('search-results');
-    const empty = $('search-empty');
-    if (!q) { results.innerHTML = ''; results.appendChild(empty); return; }
-    results.innerHTML = '<div style="font-size:0.72rem;color:var(--muted);padding:10px 0">Searching…</div>';
-    const d = await api(`/api/history/search?q=${encodeURIComponent(q)}&limit=20`);
+function insertSearchResult(content) {
+  $('cmd-input').value = content.slice(0, 200);
+  $('cmd-input').focus();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PAPERCLIP ISSUES
+══════════════════════════════════════════════════════════════ */
+async function loadIssues(status) {
+  _pcFilter = status;
+  const list = $('paperclip-list');
+  list.innerHTML = '<div class="loading">Loading...</div>';
+  $$('.pc-filter').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.pc-filter[data-filter="${status}"]`)?.classList.add('active');
+
+  try {
+    const url = status ? `/api/paperclip/issues?status=${encodeURIComponent(status)}` : '/api/paperclip/issues';
+    const d = await api(url);
     if (!d.ok || !d.data || d.data.length === 0) {
-      results.innerHTML = `<div id="search-empty">No results for "${q}"</div>`;
-      return;
+      list.innerHTML = '<div class="empty-msg">No issues</div>'; return;
     }
-    results.innerHTML = d.data.map(r => {
-      const ts = r.timestamp ? new Date(r.timestamp * 1000).toLocaleString('en-AU', { hour12: false }) : '';
-      return `<div class="search-result">
-        <div class="search-result-header">
-          <span class="search-source">${r.source || 'unknown'}</span>
-          <span class="search-role">${r.role}</span>
+    _pcIssuesCache = d.data;
+    renderIssues(d.data);
+  } catch(e) { list.innerHTML = '<div class="err-msg">Failed to load</div>'; }
+}
+
+function renderIssues(issues) {
+  const list = $('paperclip-list');
+  if (issues.length === 0) { list.innerHTML = '<div class="empty-msg">No issues</div>'; return; }
+  list.innerHTML = issues.slice(0, 30).map(issue => {
+    const badgeCls = issue.status === 'blocked' ? 'badge-blocked' : issue.status === 'in_progress' ? 'badge-in_progress' : 'badge-open';
+    const updated = issue.updatedAt ? new Date(issue.updatedAt).toLocaleDateString('en-AU') : '—';
+    const labels = issue.labels && issue.labels.length
+      ? issue.labels.map(l => `<span class="issue-label">${esc(l)}</span>`).join('')
+      : '';
+    const assignee = issue.assignee ? `<span class="issue-assignee">@${esc(issue.assignee)}</span>` : '';
+    return `<div class="issue-row" id="issue-${issue.id}" onclick="toggleIssue('${issue.id}')">
+      <div class="issue-header">
+        <div class="issue-title">${esc(issue.title || 'Untitled')}</div>
+        <span class="issue-badge ${badgeCls}">${esc(issue.status || 'open')}</span>
+      </div>
+      <div class="issue-meta">
+        <span>${updated}</span>
+        ${assignee}
+      </div>
+      ${labels ? `<div class="issue-labels">${labels}</div>` : ''}
+      <div class="issue-body" id="issue-body-${issue.id}">${esc(issue.body || issue.description || 'No description.')}</div>
+    </div>`;
+  }).join('');
+}
+
+function toggleIssue(id) {
+  const body = $('issue-body-' + id);
+  const row = $('issue-' + id);
+  if (!body) return;
+  if (_openIssue === id) {
+    body.classList.remove('visible');
+    row.classList.remove('open');
+    _openIssue = null;
+    return;
+  }
+  if (_openIssue) {
+    $('issue-body-' + _openIssue)?.classList.remove('visible');
+    $('issue-' + _openIssue)?.classList.remove('open');
+  }
+  body.classList.add('visible');
+  row.classList.add('open');
+  _openIssue = id;
+}
+
+async function loadGoals() {
+  const d = await api('/api/paperclip/goals');
+  const list = $('goals-list');
+  if (!d.ok || !d.data || d.data.length === 0) { list.innerHTML = '<div class="empty-msg" style="padding:6px 10px;">No goals</div>'; return; }
+  list.innerHTML = d.data.slice(0, 8).map(g =>
+    `<div class="goal-row">
+      <div class="goal-title">${esc(g.title || g.name || 'Untitled')}</div>
+      <div class="goal-status">${esc(g.status || 'unknown')}</div>
+    </div>`
+  ).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SKILLS
+══════════════════════════════════════════════════════════════ */
+async function loadSkills() {
+  const d = await api('/api/skills-catalog');
+  _skillsCatalog = d.ok && d.data ? d.data : [];
+  filterSkills();
+}
+
+function filterSkills() {
+  const q = ($('skills-filter-input') || {}).value || '';
+  const list = $('skills-list');
+  const filtered = q
+    ? _skillsCatalog.filter(s =>
+        s.name.toLowerCase().includes(q.toLowerCase()) ||
+        (s.description||'').toLowerCase().includes(q.toLowerCase()) ||
+        (s.tags||'').toLowerCase().includes(q.toLowerCase()))
+    : _skillsCatalog;
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-msg">${q ? 'No skills match "'+esc(q)+'"' : 'No skills'}</div>`; return;
+  }
+  list.innerHTML = filtered.map(s => {
+    const tags = s.tags ? s.tags.replace(/[\[\]]/g,'').split(',').map(t => `<span class="skill-tag">${esc(t.trim())}</span>`).join('') : '';
+    const owner = s.owner ? `<span class="skill-owner">by ${esc(s.owner)}</span>` : '';
+    return `<div class="skill-row" onclick="invokeSkill('${esc(s.name)}')">
+      <div class="skill-name">${esc(s.name)}${owner}</div>
+      <div class="skill-desc">${esc(s.description || s.trigger || '—')}</div>
+      ${tags ? `<div class="skill-tags">${tags}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function invokeSkill(name) {
+  $('cmd-input').value = '!' + name;
+  $('cmd-input').focus();
+  switchTab('graph');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   COMMAND PALETTE
+══════════════════════════════════════════════════════════════ */
+function openPalette() {
+  $('palette-overlay').classList.add('open');
+  $('palette-input').value = '';
+  $('palette-input').focus();
+  filterPalette();
+}
+
+function closePalette() {
+  $('palette-overlay').classList.remove('open');
+}
+
+function filterPalette() {
+  const q = $('palette-input').value.trim().toLowerCase();
+  const results = $('palette-results');
+  if (!q) {
+    _paletteItems = buildQuickActions();
+  } else {
+    _paletteItems = buildAllItems().filter(item =>
+      item.label.toLowerCase().includes(q) ||
+      (item.sub || '').toLowerCase().includes(q)
+    );
+  }
+  _paletteIdx = 0;
+  renderPalette();
+}
+
+function buildQuickActions() {
+  return [
+    { icon: '>', label: 'Terminal', sub: 'Focus command input', action: () => { $('cmd-input').focus(); closePalette(); } },
+    { icon: '#', label: 'Knowledge graph', sub: 'Entity visualization', action: () => { switchTab('graph'); closePalette(); } },
+    { icon: '?', label: 'Search history', sub: 'Full-text conversation search', action: () => { switchTab('history'); $('search-input').focus(); closePalette(); } },
+    { icon: '!', label: 'Skills catalog', sub: 'Browse all skills', action: () => { switchTab('skills'); closePalette(); } },
+    { icon: '@', label: 'Paperclip issues', sub: 'View team issues', action: () => { switchTab('paperclip'); closePalette(); } },
+    { icon: '^', label: 'Refresh all', sub: 'Reload all panels', action: () => { boot(); closePalette(); } },
+    { icon: 'x', label: 'Clear terminal', sub: 'Clear command history', action: () => { clearTerminal(); closePalette(); } },
+  ];
+}
+
+function buildAllItems() {
+  const items = [...buildQuickActions()];
+  for (const s of _skillsCatalog) {
+    items.push({ icon: '!', label: s.name, sub: s.description || s.trigger || '', action: () => { invokeSkill(s.name); closePalette(); } });
+  }
+  for (const j of _cronJobs) {
+    items.push({ icon: '$', label: 'Run: ' + j.name, sub: j.schedule, action: () => { runCron(j.id, j.name); closePalette(); } });
+  }
+  return items;
+}
+
+function renderPalette() {
+  const results = $('palette-results');
+  if (_paletteItems.length === 0) {
+    results.innerHTML = '<div style="padding:16px;text-align:center;font-size:11px;color:var(--muted)">No results</div>';
+    return;
+  }
+  const sections = {};
+  for (const item of _paletteItems) {
+    const section = item.icon === '!' ? 'Skills' : item.icon === '$' ? 'Cron Jobs' : 'Actions';
+    if (!sections[section]) sections[section] = [];
+    sections[section].push(item);
+  }
+  let html = '';
+  for (const [section, items] of Object.entries(sections)) {
+    html += `<div class="pal-section">
+      <div class="pal-section-label">${section}</div>
+      ${items.map((item, i) => {
+      const globalIdx = _paletteItems.indexOf(item);
+      return `<div class="pal-item ${globalIdx === _paletteIdx ? 'selected' : ''}" onclick="execPaletteItem(${globalIdx})">
+        <span class="pal-item-icon">${item.icon}</span>
+        <div><div class="pal-item-label">${esc(item.label)}</div>
+        ${item.sub ? `<div class="pal-item-sub">${esc(item.sub)}</div>` : ''}
         </div>
-        <div class="search-content">${r.content || '—'}</div>
-        <div class="search-time">${ts}</div>
       </div>`;
-    }).join('');
+    }).join('')}
+    </div>`;
   }
+  results.innerHTML = html;
+}
 
-  /* ══════════════════════════════════════════════════════════════
-     SKILLS CATALOG
-  ══════════════════════════════════════════════════════════════ */
-  async function loadSkills() {
-    const d = await api('/api/skills-catalog');
-    _skillsCatalog = d.ok && d.data ? d.data : [];
-    filterSkillsList();
-  }
+function execPaletteItem(idx) {
+  const item = _paletteItems[idx];
+  if (item && item.action) item.action();
+  else closePalette();
+}
 
-  function filterSkillsList() {
-    const list = $('skills-list');
-    const q = ($('skills-filter') || {}).value || '';
-    const skills = _skillsCatalog || [];
-    const filtered = q
-      ? skills.filter(s =>
-          s.name.toLowerCase().includes(q.toLowerCase()) ||
-          (s.description || '').toLowerCase().includes(q.toLowerCase()) ||
-          (s.tags || '').toLowerCase().includes(q.toLowerCase()))
-      : skills;
-    if (filtered.length === 0) {
-      list.innerHTML = `<p style="font-size:0.72rem;color:var(--muted)">${q ? 'No skills match "' + q + '"' : 'No skills found'}</p>`;
-      return;
-    }
-    list.innerHTML = filtered.map(s => {
-      const tags = s.tags ? s.tags.replace(/[\[\]]/g, '').split(',').map(t =>
-        `<span class="skill-tag">${t.trim()}</span>`
-      ).join('') : '';
-      const owner = s.owner ? `<span style="float:right;font-size:0.58rem;color:var(--muted);">by ${s.owner}</span>` : '';
-      return `<div class="skill-item" onclick="invokeSkill('${s.name}')">
-        <div class="skill-name">${s.name}${owner}</div>
-        <div class="skill-desc">${s.description || s.trigger || '—'}</div>
-        ${tags ? `<div class="skill-tags">${tags}</div>` : ''}
-      </div>`;
-    }).join('');
-  }
+function paletteKeydown(e) {
+  if (e.key === 'Escape') { closePalette(); return; }
+  if (e.key === 'ArrowDown') { _paletteIdx = Math.min(_paletteIdx+1, _paletteItems.length-1); renderPalette(); e.preventDefault(); }
+  else if (e.key === 'ArrowUp') { _paletteIdx = Math.max(_paletteIdx-1, 0); renderPalette(); e.preventDefault(); }
+  else if (e.key === 'Enter') { execPaletteItem(_paletteIdx); }
+}
 
-  /* ══════════════════════════════════════════════════════════════
-     PAPERCLIP ISSUES
-  ══════════════════════════════════════════════════════════════ */
-  let _pcFilter = '';
-  let _pcIssuesCache = [];
-
-  async function loadPaperclipIssues(status) {
-    _pcFilter = status;
-    const container = $('paperclip-issues');
-    container.innerHTML = '<div style="font-size:0.72rem;color:var(--muted);padding:10px 0;text-align:center;">Loading...</div>';
-
-    // Update filter button styles
-    document.querySelectorAll('.pc-filter-btn').forEach(b => b.classList.remove('active'));
-    const btnMap = {'': 'pc-filter-all', 'blocked': 'pc-filter-blocked', 'in_progress': 'pc-filter-progress'};
-    const activeBtn = btnMap[status] || 'pc-filter-all';
-    $(activeBtn).classList.add('active');
-
+/* ══════════════════════════════════════════════════════════════
+   SSE
+══════════════════════════════════════════════════════════════ */
+let eventSource;
+function connectSSE() {
+  if (eventSource) eventSource.close();
+  eventSource = new EventSource(API + '/events');
+  eventSource.addEventListener('ping', () => {});
+  eventSource.addEventListener('message', e => {
     try {
-      const url = status ? `/api/paperclip/issues?status=${encodeURIComponent(status)}` : '/api/paperclip/issues';
-      const d = await api(url);
-      if (!d.ok || !d.data || d.data.length === 0) {
-        container.innerHTML = '<div style="font-size:0.72rem;color:var(--muted);padding:10px 0;text-align:center;">No issues found</div>';
-        return;
-      }
-      _pcIssuesCache = d.data;
-      container.innerHTML = _pcIssuesCache.slice(0, 30).map(issue => {
-        const statusClass = issue.status === 'blocked' ? 'status-blocked'
-          : issue.status === 'in_progress' ? 'status-in_progress'
-          : 'status-open';
-        const updated = issue.updatedAt ? new Date(issue.updatedAt).toLocaleDateString('en-AU', { hour12: false }) : '—';
-        const labels = issue.labels && issue.labels.length
-          ? issue.labels.map(l => `<span style="background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:0 4px;font-size:0.58rem;margin-left:4px">${l}</span>`).join('')
-          : '';
-        return `<div class="issue-item">
-          <div class="issue-title">${issue.title || 'Untitled'}</div>
-          <div class="issue-meta">
-            <span class="issue-status ${statusClass}">${issue.status || 'open'}</span>
-            <span>${updated}</span>
-            ${labels}
-          </div>
-        </div>`;
-      }).join('');
-    } catch(e) {
-      container.innerHTML = '<div style="font-size:0.72rem;color:var(--red);padding:10px 0;text-align:center;">Failed to load issues</div>';
-    }
-  }
-
-  async function loadPaperclipGoals() {
-    const list = $('paperclip-goals-list');
-    try {
-      const d = await api('/api/paperclip/goals');
-      if (!d.ok || !d.data || d.data.length === 0) {
-        list.innerHTML = '<div style="font-size:0.7rem;color:var(--muted)">No goals found</div>';
-        return;
-      }
-      list.innerHTML = d.data.slice(0, 10).map(g => {
-        const status = g.status || 'unknown';
-        return `<div class="goal-item">
-          <div class="goal-name">${g.title || g.name || 'Untitled Goal'}</div>
-          <div class="goal-meta">${status}</div>
-        </div>`;
-      }).join('');
-    } catch(e) {
-      list.innerHTML = '<div style="font-size:0.7rem;color:var(--red)">Failed to load goals</div>';
-    }
-  }
-
-  function invokeSkill(name) {
-    // Feed into command bar
-    $('cmd-input').value = `!${name}`;
-    $('cmd-input').focus();
-    addFeed('cmd', `Invoke skill: !${name}`);
-    closePalette();
-  }
-
-  /* ══════════════════════════════════════════════════════════════
-     COMMAND PALETTE
-  ══════════════════════════════════════════════════════════════ */
-  function openPalette() {
-    $('palette-overlay').classList.add('open');
-    $('palette-input').value = '';
-    $('palette-input').focus();
-    filterPalette();
-  }
-
-  function closePalette() {
-    $('palette-overlay').classList.remove('open');
-  }
-
-  function filterPalette() {
-    const q = $('palette-input').value.trim().toLowerCase();
-    const results = $('palette-results');
-    if (!q) {
-      // Default: show quick actions
-      _paletteItems = getQuickActions();
-    } else {
-      _paletteItems = getAllPaletteItems().filter(item =>
-        item.label.toLowerCase().includes(q) ||
-        (item.sublabel && item.sublabel.toLowerCase().includes(q)) ||
-        (item.tags && item.tags.some(t => t.toLowerCase().includes(q)))
-      );
-    }
-    _selectedPaletteIdx = 0;
-    renderPalette();
-  }
-
-  function getQuickActions() {
-    return [
-      { icon: '🔍', label: 'Search history', sublabel: 'Full-text search across all conversations', action: () => { switchTab('search'); closePalette(); $('search-input').focus(); }, tags: ['search'] },
-      { icon: '🧠', label: 'Knowledge graph', sublabel: 'Visualize Hermes memory', action: () => { switchTab('graph'); closePalette(); }, tags: ['graph'] },
-      { icon: '⚡', label: 'Skills catalog', sublabel: 'Browse and invoke skills', action: () => { switchTab('skills'); closePalette(); }, tags: ['skills'] },
-      { icon: '⏭', label: 'Trigger morning briefing', sublabel: 'Run the morning-briefing cron now', action: () => { triggerCronByName('morning-briefing'); closePalette(); }, tags: ['cron'] },
-      { icon: '📡', label: 'View live feed', sublabel: 'See recent events', action: () => { document.querySelector('#feed-list').scrollTop = 0; closePalette(); }, tags: ['feed'] },
-      { icon: '🔄', label: 'Refresh all panels', sublabel: 'Reload status, sessions, graph', action: () => { boot(); closePalette(); }, tags: ['refresh'] },
-      { icon: '🗑', label: 'Clear command history', sublabel: 'Wipe stored command history', action: () => { localStorage.removeItem('mc_cmd_history'); _cmdHistory = []; _cmdHistoryIdx = -1; closePalette(); addFeed('system', 'Command history cleared'); }, tags: ['clear'] },
-    ];
-  }
-
-  function getAllPaletteItems() {
-    const q = $('palette-input').value.trim().toLowerCase();
-    const items = [...getQuickActions()];
-    // Add skills
-    if (_skillsCatalog) {
-      for (const s of _skillsCatalog) {
-        items.push({
-          icon: '⚡',
-          label: s.name,
-          sublabel: s.description || s.trigger || '',
-          action: () => { invokeSkill(s.name); },
-          tags: s.tags ? s.tags.replace(/[\[\]]/g, '').split(',').map(t => t.trim()) : [],
-        });
-      }
-    }
-    // Add cron jobs as triggers
-    if (_cronJobs.length > 0) {
-      for (const j of _cronJobs) {
-        items.push({
-          icon: '⏰',
-          label: `Run: ${j.name}`,
-          sublabel: `Schedule: ${j.schedule} · ${j.last_status || 'never run'}`,
-          action: () => { runCron(j.id, j.name); closePalette(); },
-          tags: ['cron', 'run'],
-        });
-      }
-    }
-    // Add search suggestions
-    const popularSearches = ['fitness', 'hermes', 'homelab', 'github', 'paperclip', 'cron', 'maxi'];
-    for (const sq of popularSearches) {
-      if (sq.includes(q)) {
-        items.push({
-          icon: '🔍',
-          label: `Search: "${sq}"`,
-          sublabel: 'Search conversation history',
-          action: () => {
-            switchTab('search');
-            closePalette();
-            $('search-input').value = sq;
-            doSearch();
-          },
-          tags: ['search'],
-        });
-      }
-    }
-    return items;
-  }
-
-  let _skillsCatalog = [];
-
-  async function loadSkillsForPalette() {
-    const d = await api('/api/skills-catalog');
-    if (d.ok && d.data) _skillsCatalog = d.data;
-  }
-
-  function renderPalette() {
-    const results = $('palette-results');
-    if (_paletteItems.length === 0) {
-      results.innerHTML = '<div style="padding:16px;text-align:center;font-size:0.8rem;color:var(--muted)">No results</div>';
-      return;
-    }
-    results.innerHTML = _paletteItems.map((item, i) =>
-      `<div class="palette-item ${i === _selectedPaletteIdx ? 'selected' : ''}" onclick="executePaletteItem(${i})">
-        <span class="icon">${item.icon}</span>
-        <div>
-          <div class="label">${item.label}</div>
-          ${item.sublabel ? `<div class="sublabel">${item.sublabel}</div>` : ''}
-        </div>
-        ${item.shortcut ? `<span class="shortcut">${item.shortcut}</span>` : ''}
-      </div>`
-    ).join('');
-  }
-
-  function executePaletteItem(idx) {
-    const item = _paletteItems[idx];
-    if (item && item.action) item.action();
-    else closePalette();
-  }
-
-  function executeSelected() {
-    executePaletteItem(_selectedPaletteIdx);
-  }
-
-  // Keyboard navigation
-  document.addEventListener('keydown', e => {
-    if ($('palette-overlay').classList.contains('open')) {
-      if (e.key === 'ArrowDown') {
-        _selectedPaletteIdx = Math.min(_selectedPaletteIdx + 1, _paletteItems.length - 1);
-        renderPalette(); e.preventDefault();
-      } else if (e.key === 'ArrowUp') {
-        _selectedPaletteIdx = Math.max(_selectedPaletteIdx - 1, 0);
-        renderPalette(); e.preventDefault();
-      }
-      return;
-    }
-    if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-      e.preventDefault(); openPalette();
-    }
-    if (e.key === 'Escape') {
-      if ($('palette-overlay').classList.contains('open')) closePalette();
-    }
+      const m = JSON.parse(e.data);
+      _eventCount++;
+      setGauge('g-events', _eventCount);
+      addMiniFeed(m.type, JSON.stringify(m.data || {}).slice(0, 60));
+    } catch {}
   });
+  eventSource.addEventListener('error', () => { updateConn(false); setTimeout(connectSSE, 5000); });
+  eventSource.addEventListener('open', () => updateConn(true));
+}
 
-  /* ══════════════════════════════════════════════════════════════
-     SSE
-  ══════════════════════════════════════════════════════════════ */
-  function connectSSE() {
-    if (eventSource) eventSource.close();
-    eventSource = new EventSource(API + '/events');
-    eventSource.addEventListener('ping', () => {});
-    eventSource.addEventListener('message', e => {
-      try {
-        const m = JSON.parse(e.data);
-        addFeed(m.type, JSON.stringify(m.data).slice(0, 80));
-      } catch {}
-    });
-    eventSource.addEventListener('error', () => {
-      updateConnection(false);
-      setTimeout(connectSSE, 5000);
-    });
-    eventSource.addEventListener('open', () => updateConnection(true));
+/* ══════════════════════════════════════════════════════════════
+   BRIEFING REGEN
+══════════════════════════════════════════════════════════════ */
+$('briefing-regen').addEventListener('click', async () => {
+  const content = $('briefing-content');
+  const meta = $('briefing-meta');
+  content.textContent = 'Regenerating...';
+  content.style.color = 'var(--amber)';
+  // Find morning-briefing cron
+  const job = _cronJobs.find(j => j.name.includes('morning-briefing') || j.name.includes('briefing'));
+  if (job) {
+    await runCron(job.id, job.name);
+    setTimeout(loadBriefing, 3000);
+  } else {
+    content.textContent = 'No morning-briefing cron found';
+    content.style.color = 'var(--muted)';
   }
+});
 
-  /* ══════════════════════════════════════════════════════════════
-     CRON
-  ══════════════════════════════════════════════════════════════ */
-  async function triggerCronByName(name) {
-    const d = await api('/api/cron-jobs');
-    if (!d.ok || !d.data) return;
-    const job = d.data.find(j => j.name === name || j.id.includes(name));
-    if (job) {
-      await fetch(API + '/api/cron-jobs/' + encodeURIComponent(job.id) + '/trigger', { method: 'POST' });
-      addFeed('cron', 'Triggered: ' + job.name);
-    }
+/* ══════════════════════════════════════════════════════════════
+   GLOBAL KEYBOARD
+══════════════════════════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+    e.preventDefault(); openPalette();
   }
-
-  /* ══════════════════════════════════════════════════════════════
-     DRAG-AND-DROP PANEL REORDER
-  ══════════════════════════════════════════════════════════════ */
-  const PANEL_ORDER_KEY = 'mc_panel_order';
-  const PANEL_IDS = ['status-panel', 'sessions-panel', 'crons-panel', 'briefing-panel', 'command-section'];
-
-  let _dragSrc = null;
-  let _dragOverEl = null;
-
-  function getPanelOrder() {
-    try {
-      const saved = localStorage.getItem(PANEL_ORDER_KEY);
-      if (saved) {
-        const order = JSON.parse(saved);
-        // Validate: only include panels that still exist
-        return order.filter(id => document.getElementById(id));
-      }
-    } catch(e) {}
-    return null;
+  if (e.key === 'Escape') {
+    if ($('palette-overlay').classList.contains('open')) closePalette();
   }
+});
 
-  function savePanelOrder(order) {
-    try { localStorage.setItem(PANEL_ORDER_KEY, JSON.stringify(order)); } catch(e) {}
-  }
+/* ══════════════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════════════ */
+async function boot() {
+  await Promise.all([loadStatus(), loadSessions(), loadCrons(), loadBriefing(), loadSkills()]);
+  await Promise.all([loadGraph(), loadIssues(''), loadGoals()]);
+  resizeCanvas();
+  connectSSE();
+  addMiniFeed('system', 'Mission Control online');
+  _eventCount = 0;
 
-  function applyPanelOrder() {
-    const order = getPanelOrder() || PANEL_IDS;
-    const container = document.getElementById('left-col');
-    // Remove all panels from DOM order
-    for (const id of PANEL_IDS) {
-      const el = document.getElementById(id);
-      if (el) container.appendChild(el);
-    }
-    // Re-append in saved order (existing panels stay, missing ones get appended at end)
-    for (const id of order) {
-      const el = document.getElementById(id);
-      if (el) container.appendChild(el);
-    }
-    savePanelOrder(order);
-  }
+  // Periodic refresh
+  setInterval(loadStatus, 30000);
+  setInterval(loadSessions, 30000);
+  setInterval(loadCrons, 30000);
+  setInterval(loadBriefing, 60000);
+}
 
-  function initDragAndDrop() {
-    const container = document.getElementById('left-col');
+window.addEventListener('resize', () => { resizeCanvas(); });
 
-    container.addEventListener('dragstart', e => {
-      const panel = e.target.closest('.draggable-panel');
-      if (!panel) return;
-      _dragSrc = panel;
-      panel.style.opacity = '0.4';
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', panel.id);
-    }, false);
-
-    container.addEventListener('dragend', e => {
-      const panel = e.target.closest('.draggable-panel');
-      if (panel) panel.style.opacity = '';
-      if (_dragOverEl) _dragOverEl.classList.remove('drag-over');
-      _dragSrc = null;
-      _dragOverEl = null;
-    }, false);
-
-    container.addEventListener('dragover', e => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      const panel = e.target.closest('.draggable-panel');
-      if (!panel || panel === _dragSrc) return;
-
-      // Remove previous highlight
-      if (_dragOverEl && _dragOverEl !== panel) _dragOverEl.classList.remove('drag-over');
-
-      // Find insertion reference: below the mouse, before the next sibling
-      const srcRect = _dragSrc.getBoundingClientRect();
-      const mouseY = e.clientY;
-      const panelRect = panel.getBoundingClientRect();
-      const panelMidY = panelRect.top + panelRect.height / 2;
-
-      // Insert before or after based on mouse position relative to panel midpoint
-      if (mouseY < panelMidY) {
-        panel.classList.add('drag-over');
-        _dragOverEl = panel;
-      } else {
-        // Insert after this panel
-        const next = panel.nextElementSibling;
-        if (next && next !== _dragSrc) {
-          next.classList.add('drag-over');
-          _dragOverEl = next;
-        } else {
-          panel.classList.add('drag-over');
-          _dragOverEl = panel;
-        }
-      }
-    }, false);
-
-    container.addEventListener('dragleave', e => {
-      const panel = e.target.closest('.draggable-panel');
-      if (panel && !panel.contains(e.relatedTarget)) {
-        panel.classList.remove('drag-over');
-        if (_dragOverEl === panel) _dragOverEl = null;
-      }
-    }, false);
-
-    container.addEventListener('drop', e => {
-      e.preventDefault();
-      if (!_dragSrc || !_dragOverEl) return;
-      if (_dragOverEl === _dragSrc) return;
-
-      const container = document.getElementById('left-col');
-      const srcRect = _dragSrc.getBoundingClientRect();
-      const mouseY = e.clientY;
-      const overRect = _dragOverEl.getBoundingClientRect();
-      const overMidY = overRect.top + overRect.height / 2;
-
-      // Remove highlight
-      _dragOverEl.classList.remove('drag-over');
-
-      // Determine: insert _dragSrc before or after _dragOverEl
-      const insertBefore = mouseY < overMidY;
-
-      if (insertBefore) {
-        container.insertBefore(_dragSrc, _dragOverEl);
-      } else {
-        container.insertBefore(_dragSrc, _dragOverEl.nextElementSibling);
-      }
-
-      // Persist new order
-      const newOrder = [...container.querySelectorAll('.draggable-panel')].map(el => el.id);
-      savePanelOrder(newOrder);
-    }, false);
-
-    // Apply saved order on load
-    applyPanelOrder();
-  }
-
-  /* ══════════════════════════════════════════════════════════════
-     BOOT
-  ══════════════════════════════════════════════════════════════ */
-  async function boot() {
-    initDragAndDrop();
-    resizeCanvas();
-    await Promise.all([
-      loadStatus(),
-      loadSessions(),
-      loadCrons(),
-      loadBriefing(),
-      loadSkills(),
-      loadSkillsForPalette(),
-      loadCronStrip(),
-    ]);
-    await Promise.all([
-      loadGraph(),
-      loadPaperclipIssues(''),
-      loadPaperclipGoals(),
-    ]);
-    connectSSE();
-    addFeed('system', 'Mission Control online');
-    setInterval(loadStatus, 30000);
-    setInterval(loadSessions, 30000);
-    setInterval(loadCrons, 30000);
-    setInterval(loadBriefing, 60000);
-    setInterval(loadCronStrip, 30000);
-    setInterval(loadPaperclipIssues, 60000);
-    setInterval(loadPaperclipGoals, 60000);
-  }
-
-  window.addEventListener('resize', () => { resizeCanvas(); });
-
-  boot();
+boot();
 </script>
 </body>
 </html>
