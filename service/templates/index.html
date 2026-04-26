@@ -473,7 +473,7 @@
 
     <!-- Briefing -->
     <div id="briefing-panel" class="draggable-panel" data-panel="briefing-panel" draggable="false">
-      <div class="panel-label"><span class="drag-handle">&#9776;</span>🌅 Briefing</div>
+      <div class="panel-label"><span class="drag-handle">&#9776;</span>🌅 Briefing <button id="briefing-regen-btn" title="Regenerate briefing" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.65rem;padding:0 2px;margin-left:4px;">&#8635;</button></div>
       <div id="briefing-text" style="font-size:0.72rem;color:var(--muted)">Loading...</div>
       <div id="briefing-meta"></div>
     </div>
@@ -755,6 +755,50 @@
       text.textContent = 'No briefing or pending crons';
     }
   }
+
+  // Briefing regenerate button
+  $('briefing-regen-btn').addEventListener('click', async () => {
+    const btn = $('briefing-regen-btn');
+    const text = $('briefing-text');
+    const meta = $('briefing-meta');
+    btn.style.color = 'var(--green)';
+    btn.disabled = true;
+    text.textContent = 'Regenerating...';
+    text.style.color = 'var(--yellow)';
+    meta.textContent = '';
+    await triggerCronByName('morning-briefing');
+    const start = Date.now();
+    // Poll until a new briefing session appears (session_id timestamp > start)
+    const check = async () => {
+      if (Date.now() - start > 60000) {
+        text.textContent = 'Regeneration timed out — check cron status manually';
+        text.style.color = 'var(--red)';
+        btn.style.color = 'var(--muted)';
+        btn.disabled = false;
+        return;
+      }
+      await loadBriefing();
+      const b = (await (await fetch(API + '/api/briefing')).json()).data;
+      const mb = b && b.morning_briefing;
+      if (mb && mb.session_id) {
+        // Extract timestamp from session_id: cron_<hash>_<YYYYMMDD>_<HHMMSS>
+        const m = mb.session_id.match(/(\d{8})_(\d{6})$/);
+        if (m) {
+          const d = m[1], t = m[2];
+          const ts = new Date(`${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}T${t.slice(0,2)}:${t.slice(2,4)}:${t.slice(4,6)}Z`).getTime();
+          if (ts > start) {
+            // New briefing detected
+            btn.style.color = 'var(--muted)';
+            btn.disabled = false;
+            text.style.color = 'var(--text)';
+            return;
+          }
+        }
+      }
+      setTimeout(check, 3000);
+    };
+    setTimeout(check, 8000);
+  });
 
   /* ══════════════════════════════════════════════════════════════
      COMMAND BAR

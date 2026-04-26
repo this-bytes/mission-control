@@ -195,6 +195,33 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-26 15:11 UTC
+
+### Changes Made
+
+**Panel drag-to-reorder with localStorage persistence (NEW)**
+- 5 left-column panels now draggable: Status, Sessions, Cron Jobs, Briefing, Command
+- `&#9776;` drag handle appears on hover (left of panel label)
+- CSS: subtle hover highlight, drag-over accent border on target panel
+- Uses native HTML5 drag-and-drop API — no dependencies
+- `initDragAndDrop()` called at boot, validates order against `PANEL_IDS`
+- Order persisted to `localStorage` key `mc_panel_order`, survives page reloads
+- 2 files changed, ~200 lines added
+
+### Current State
+- Service running on port 8420 (systemd, enabled, 3h 13min uptime) ✅
+- Git committed + pushed: aaa37de (Panel drag-to-reorder)
+- All endpoints verified ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **Dependabot fixes** — 3 moderate GitHub vulnerabilities (low priority, no runtime impact)
+2. **Token usage display** — `sessions.json` has `last_prompt_tokens` (45239, 101528) but `total_tokens=0` always; Hermes limitation, not fixable here
+3. **Morning briefing panel polish** — more prominent placement, add "regenerate" button
+4. **Memory graph panel** — type-based node coloring, hover shows entity fact previews
+5. **Session token/cost display** — surface `last_prompt_tokens` from sessions.json in Sessions panel
+
 ## Session Log — 2026-04-26 14:00 UTC
 
 ### Changes Made
