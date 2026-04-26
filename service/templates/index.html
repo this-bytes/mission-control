@@ -560,6 +560,7 @@
   let eventSource;
   let _cmdController = null;
   let _graphData = null;
+  let _cronJobs = [];  // cached for command palette
   let _selectedPaletteIdx = 0;
   let _paletteItems = [];
   let _searchCache = {};
@@ -664,8 +665,10 @@
     if (!d.ok || !d.data || d.data.length === 0) {
       list.innerHTML = '<p style="font-size:0.7rem;color:var(--muted)">No cron jobs</p>';
       if (count) count.textContent = '';
+      _cronJobs = [];
       return;
     }
+    _cronJobs = d.data;  // cache for palette
     if (count) count.textContent = `(${d.data.length})`;
     list.innerHTML = d.data.slice(0, 12).map(j => {
       const statusClass = j.last_status === 'error' ? 'cron-status-err'
@@ -860,32 +863,32 @@
     }
 
     tick() {
-      // Repulsion between all nodes
+      // Repulsion between all nodes — reduced from 3000 for less jitter
       for (let i = 0; i < this.nodes.length; i++) {
         for (let j = i + 1; j < this.nodes.length; j++) {
           const a = this.nodes[i], b = this.nodes[j];
           const dx = b.x - a.x, dy = b.y - a.y;
           const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-          const force = 3000 / (dist * dist);
+          const force = 1500 / (dist * dist);
           const fx = dx / dist * force, fy = dy / dist * force;
           a.vx -= fx; a.vy -= fy;
           b.vx += fx; b.vy += fy;
         }
       }
-      // Attraction along edges
+      // Attraction along edges — gentler spring (was 0.05, now 0.02)
       for (const e of this.edges) {
         const dx = e.target.x - e.source.x, dy = e.target.y - e.source.y;
         const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-        const force = (dist - 100) * 0.05;
+        const force = (dist - 140) * 0.02;  // ideal edge length ~140px
         const fx = dx / dist * force, fy = dy / dist * force;
         e.source.vx += fx; e.source.vy += fy;
         e.target.vx -= fx; e.target.vy -= fy;
       }
-      // Center gravity + velocity damping
+      // Center gravity + velocity damping — lighter damping = smoother
       for (const n of this.nodes) {
-        n.vx += (canvas.width / 2 - n.x) * 0.001;
-        n.vy += (canvas.height / 2 - n.y) * 0.001;
-        n.vx *= 0.85; n.vy *= 0.85;
+        n.vx += (canvas.width / 2 - n.x) * 0.0008;
+        n.vy += (canvas.height / 2 - n.y) * 0.0008;
+        n.vx *= 0.88; n.vy *= 0.88;
         n.x += n.vx; n.y += n.vy;
         n.x = Math.max(20, Math.min(canvas.width - 20, n.x));
         n.y = Math.max(20, Math.min(canvas.height - 20, n.y));
@@ -979,8 +982,8 @@
     if (!_graph) return;
     _animating = true;
     function frame() {
-      if (!_graph) return;
-      for (let i = 0; i < 5; i++) _graph.tick();
+      if (!_animating) return;
+      for (let i = 0; i < 3; i++) _graph.tick();
       _graph.draw();
       if (_animating) requestAnimationFrame(frame);
     }
@@ -1206,6 +1209,18 @@
           sublabel: s.description || s.trigger || '',
           action: () => { invokeSkill(s.name); },
           tags: s.tags ? s.tags.replace(/[\[\]]/g, '').split(',').map(t => t.trim()) : [],
+        });
+      }
+    }
+    // Add cron jobs as triggers
+    if (_cronJobs.length > 0) {
+      for (const j of _cronJobs) {
+        items.push({
+          icon: '⏰',
+          label: `Run: ${j.name}`,
+          sublabel: `Schedule: ${j.schedule} · ${j.last_status || 'never run'}`,
+          action: () => { runCron(j.id, j.name); closePalette(); },
+          tags: ['cron', 'run'],
         });
       }
     }
