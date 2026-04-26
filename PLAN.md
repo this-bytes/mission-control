@@ -195,7 +195,36 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
-## Session Log — 2026-04-27 00:21 UTC
+## Session Log — 2026-04-27 01:29 UTC
+
+### Changes Made
+
+**Entity Drill-Down — Click Connections in Graph Detail Panel (NEW)**
+- Refactored graph node click into `renderEntityDetail(entityId)` function
+- Connection names in detail panel are now **cyan clickable spans** (`.clickable-entity`)
+- Click any connection name to **drill into that entity** — full fact previews (120 chars) load
+- Clicking the selected entity again shows all connections (no-op safe)
+- CSS: `.clickable-entity` hover underline, `.detail-preview` for fact content
+- `_selectedEntity` tracks current drill-down state; up to 12 connections shown for selected entity vs 8 compact
+- Graph canvas unchanged; detail panel upgrades enable multi-hop exploration
+
+### Current State
+- Service running on port 8420 (systemd) ✅ (PID 104281, fresh restart)
+- Git committed + pushed: `128a05a` ✅
+- Graph: 20 nodes, 4 edges with fact previews
+
+### GitHub PR Workflow — BLOCKER
+- GitHub MCP auth failing: `McpError: Authentication Failed: Bad credentials`
+- No `gh` CLI installed
+- No `GH_TOKEN` or GitHub env vars
+- `auth.json` in `.hermes` has no GitHub provider entries
+- **Need Aaron to:** either add GitHub credentials to `~/.hermes/auth.json` providers, or set `GH_TOKEN` env var, so we can build the GitHub PR panel
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on auth (see above)
+2. **Memory graph panel** — entity drill-down now works; could add type-based coloring (person=blue, project=green)
+3. **Morning briefing content** — improve quality/formatting
+4. **Dependabot fixes** — 3 moderate GitHub vulnerabilities (low priority)
 
 ### Bug Fixed
 
