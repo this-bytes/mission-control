@@ -195,6 +195,38 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-26 14:00 UTC
+
+### Changes Made
+
+**1. Graph physics tuning (DONE)**
+- Repulsion force: `3000 → 1500` (nodes spread more, less jitter)
+- Edge spring constant: `0.05 → 0.02` (smoother, less oscillation)
+- Ideal edge length: `100 → 140px` (nodes space out further)
+- Center gravity: `0.001 → 0.0008` (gentler pull to center)
+- Velocity damping: `0.85 → 0.88` (smoother motion)
+- Ticks/frame: `5 → 3` (reduced CPU load, still smooth at 60fps)
+
+**2. Cron jobs in command palette (DONE)**
+- All cron jobs now appear in the command palette (type `run`, `cron`, or job name to filter)
+- Jobs cached in `_cronJobs` global — populated on boot from `/api/cron-jobs`
+- Each palette entry shows: `⏰ Run: <name> — Schedule: <expr> · <last_status>`
+- Triggers via the existing `runCron()` function — no backend changes needed
+
+### Current State
+- Service running on port 8420 (systemd, enabled, survives reboots) ✅
+- Git committed + pushed: `1ec771f`
+- GitHub: 3 moderate Dependabot vulnerabilities (low priority — no npm deps in project, alerts are on repo metadata)
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **Dependabot fixes** — resolve the 3 moderate GitHub vulnerabilities (audit npm/pip deps)
+2. **Morning briefing panel** — make it more prominent, add "regenerate" button
+3. **Panel drag-to-reorder** — persist layout to localStorage
+4. **Token usage display** — read actual token counts from session .jsonl files
+5. **Memory graph panel polish** — type-based node coloring (person/project/concept), hover shows fact previews
+
 ## Session Log — 2026-04-26 13:00 UTC
 
 ### Changes Made

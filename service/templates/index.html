@@ -85,6 +85,30 @@
       overflow: hidden;
     }
 
+    /* ── Draggable Panels ───────────────────────────────── */
+    .draggable-panel {
+      cursor: grab;
+      user-select: none;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    .draggable-panel:hover { background: rgba(59,130,246,0.06); }
+    .draggable-panel:active { cursor: grabbing; }
+    .draggable-panel.drag-over {
+      border-top: 2px solid var(--accent);
+      background: rgba(59,130,246,0.12);
+    }
+    .drag-handle {
+      display: inline-block;
+      color: var(--muted);
+      font-size: 0.6rem;
+      margin-right: 4px;
+      opacity: 0;
+      transition: opacity 0.15s;
+      cursor: grab;
+    }
+    .draggable-panel:hover .drag-handle { opacity: 1; }
+
     /* ── Status Panel ────────────────────────────────────── */
     #status-panel {
       padding: 12px 14px;
@@ -429,33 +453,34 @@
   <div id="left-col">
 
     <!-- Status -->
-    <div id="status-panel">
-      <div class="panel-label">⚡ System</div>
+    <div id="status-panel" class="draggable-panel" data-panel="status-panel" draggable="false">
+      <div class="panel-label"><span class="drag-handle">&#9776;</span>⚡ System</div>
       <div id="gateway-info">Loading...</div>
       <div id="platform-list"></div>
     </div>
 
     <!-- Sessions -->
-    <div id="sessions-panel">
-      <div class="panel-label">💬 Sessions</div>
+    <div id="sessions-panel" class="draggable-panel" data-panel="sessions-panel" draggable="false">
+      <div class="panel-label"><span class="drag-handle">&#9776;</span>💬 Sessions</div>
       <div id="sessions-list">Loading...</div>
     </div>
 
     <!-- Cron Jobs -->
-    <div id="crons-panel">
-      <div class="panel-label">⏰ Cron Jobs <span id="crons-count" style="font-weight:400;text-transform:none"></span></div>
+    <div id="crons-panel" class="draggable-panel" data-panel="crons-panel" draggable="false">
+      <div class="panel-label"><span class="drag-handle">&#9776;</span>⏰ Cron Jobs <span id="crons-count" style="font-weight:400;text-transform:none"></span></div>
       <div id="crons-list">Loading...</div>
     </div>
 
     <!-- Briefing -->
-    <div id="briefing-panel">
-      <div class="panel-label">🌅 Briefing</div>
+    <div id="briefing-panel" class="draggable-panel" data-panel="briefing-panel" draggable="false">
+      <div class="panel-label"><span class="drag-handle">&#9776;</span>🌅 Briefing</div>
       <div id="briefing-text" style="font-size:0.72rem;color:var(--muted)">Loading...</div>
       <div id="briefing-meta"></div>
     </div>
 
     <!-- Command -->
-    <div id="command-section">
+    <div id="command-section" class="draggable-panel" data-panel="command-section" draggable="false">
+      <div class="panel-label"><span class="drag-handle">&#9776;</span>⌨️ Command</div>
       <input id="cmd-input" type="text" placeholder="Ask Hermes anything..." autocomplete="off" />
       <div id="cmd-response"></div>
     </div>
@@ -1334,9 +1359,143 @@
   }
 
   /* ══════════════════════════════════════════════════════════════
+     DRAG-AND-DROP PANEL REORDER
+  ══════════════════════════════════════════════════════════════ */
+  const PANEL_ORDER_KEY = 'mc_panel_order';
+  const PANEL_IDS = ['status-panel', 'sessions-panel', 'crons-panel', 'briefing-panel', 'command-section'];
+
+  let _dragSrc = null;
+  let _dragOverEl = null;
+
+  function getPanelOrder() {
+    try {
+      const saved = localStorage.getItem(PANEL_ORDER_KEY);
+      if (saved) {
+        const order = JSON.parse(saved);
+        // Validate: only include panels that still exist
+        return order.filter(id => document.getElementById(id));
+      }
+    } catch(e) {}
+    return null;
+  }
+
+  function savePanelOrder(order) {
+    try { localStorage.setItem(PANEL_ORDER_KEY, JSON.stringify(order)); } catch(e) {}
+  }
+
+  function applyPanelOrder() {
+    const order = getPanelOrder() || PANEL_IDS;
+    const container = document.getElementById('left-col');
+    // Remove all panels from DOM order
+    for (const id of PANEL_IDS) {
+      const el = document.getElementById(id);
+      if (el) container.appendChild(el);
+    }
+    // Re-append in saved order (existing panels stay, missing ones get appended at end)
+    for (const id of order) {
+      const el = document.getElementById(id);
+      if (el) container.appendChild(el);
+    }
+    savePanelOrder(order);
+  }
+
+  function initDragAndDrop() {
+    const container = document.getElementById('left-col');
+
+    container.addEventListener('dragstart', e => {
+      const panel = e.target.closest('.draggable-panel');
+      if (!panel) return;
+      _dragSrc = panel;
+      panel.style.opacity = '0.4';
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', panel.id);
+    }, false);
+
+    container.addEventListener('dragend', e => {
+      const panel = e.target.closest('.draggable-panel');
+      if (panel) panel.style.opacity = '';
+      if (_dragOverEl) _dragOverEl.classList.remove('drag-over');
+      _dragSrc = null;
+      _dragOverEl = null;
+    }, false);
+
+    container.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const panel = e.target.closest('.draggable-panel');
+      if (!panel || panel === _dragSrc) return;
+
+      // Remove previous highlight
+      if (_dragOverEl && _dragOverEl !== panel) _dragOverEl.classList.remove('drag-over');
+
+      // Find insertion reference: below the mouse, before the next sibling
+      const srcRect = _dragSrc.getBoundingClientRect();
+      const mouseY = e.clientY;
+      const panelRect = panel.getBoundingClientRect();
+      const panelMidY = panelRect.top + panelRect.height / 2;
+
+      // Insert before or after based on mouse position relative to panel midpoint
+      if (mouseY < panelMidY) {
+        panel.classList.add('drag-over');
+        _dragOverEl = panel;
+      } else {
+        // Insert after this panel
+        const next = panel.nextElementSibling;
+        if (next && next !== _dragSrc) {
+          next.classList.add('drag-over');
+          _dragOverEl = next;
+        } else {
+          panel.classList.add('drag-over');
+          _dragOverEl = panel;
+        }
+      }
+    }, false);
+
+    container.addEventListener('dragleave', e => {
+      const panel = e.target.closest('.draggable-panel');
+      if (panel && !panel.contains(e.relatedTarget)) {
+        panel.classList.remove('drag-over');
+        if (_dragOverEl === panel) _dragOverEl = null;
+      }
+    }, false);
+
+    container.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!_dragSrc || !_dragOverEl) return;
+      if (_dragOverEl === _dragSrc) return;
+
+      const container = document.getElementById('left-col');
+      const srcRect = _dragSrc.getBoundingClientRect();
+      const mouseY = e.clientY;
+      const overRect = _dragOverEl.getBoundingClientRect();
+      const overMidY = overRect.top + overRect.height / 2;
+
+      // Remove highlight
+      _dragOverEl.classList.remove('drag-over');
+
+      // Determine: insert _dragSrc before or after _dragOverEl
+      const insertBefore = mouseY < overMidY;
+
+      if (insertBefore) {
+        container.insertBefore(_dragSrc, _dragOverEl);
+      } else {
+        container.insertBefore(_dragSrc, _dragOverEl.nextElementSibling);
+      }
+
+      // Persist new order
+      const newOrder = [...container.querySelectorAll('.draggable-panel')].map(el => el.id);
+      savePanelOrder(newOrder);
+    }, false);
+
+    // Apply saved order on load
+    applyPanelOrder();
+  }
+
+  /* ══════════════════════════════════════════════════════════════
      BOOT
   ══════════════════════════════════════════════════════════════ */
   async function boot() {
+    initDragAndDrop();
     resizeCanvas();
     await Promise.all([
       loadStatus(),
