@@ -195,6 +195,35 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 04:37 UTC
+
+### Changes Made
+
+**Live Events Panel (NEW)**
+- Replaced the thin `feed-mini` strip with a proper 180px scrollable Events panel in the left column
+- New backend: `_event_log` ring buffer (100 entries) + `GET /api/events/recent?limit=N` endpoint
+- New frontend: `loadEvents()` fetches recent events on boot, SSE `addEvent()` live-updates the panel
+- Event types rendered with color-coded badges: `platform_change` (cyan), `cron_triggered` (green), `command_executed` (amber), `error` (red)
+- Each event row: timestamp + badge + message text
+- Auto-scrolls to latest event; scrollable history via the panel scrollbar
+- `addMiniFeed()` bridge function preserved so existing callers (`runCron`, streaming) continue to work
+
+### Current State
+- Service running on port 8420 via systemd ✅ (fresh restart)
+- Git committed + pushed: `e93df59` ✅
+- All endpoints verified: /api/ping ✅ /api/status ✅ /api/cron-jobs ✅ /api/events/recent ✅ /api/sessions ✅ /api/graph ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all types "unknown")
+3. **Morning briefing quality** — content correct; could improve formatting further
+4. **Token usage display** — Hermes doesn't populate total_tokens at write time (limitation)
+5. **Live metrics over time** — uptime history, token usage graphs
+
+---
+
 ## Session Log — 2026-04-27 03:34 UTC
 
 ### Changes Made
