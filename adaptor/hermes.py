@@ -350,16 +350,29 @@ class HermesAdaptor:
             # Sort by mtime desc
             cron_sessions.sort(key=lambda x: x.stat().st_mtime, reverse=True)
 
-            # Look for morning briefing in recent cron sessions
-            for session_file in cron_sessions[:8]:
+            # Look for morning briefing in recent cron sessions.
+            # Scan up to 50 to handle heavy cron churn (new sessions every 5 min).
+            # Morning briefing (21:00 UTC) typically sits at position 20-30.
+            for session_file in cron_sessions[:50]:
                 try:
                     with session_file.open() as f:
                         data = json.load(f)
                         msgs = data.get("messages", [])
-                        if msgs:
-                            # Get last assistant message as the briefing
-                            for m in reversed(msgs):
-                                if m.get("role") == "assistant":
+                        if not msgs:
+                            continue
+                        # Root-cause fix: only accept sessions where the first user
+                        # prompt explicitly invokes the morning-briefing skill.
+                        # This excludes other crons (e.g. mission-control-iterate)
+                        # whose sessions get a newer mtime.
+                        first_user = next(
+                            (m.get("content", "") for m in msgs if m.get("role") == "user"),
+                            ""
+                        )
+                        if '"briefing-morning"' not in first_user:
+                            continue
+                        # Get last assistant message as the briefing
+                        for m in reversed(msgs):
+                            if m.get("role") == "assistant":
                                     content = m.get("content", "")
                                     # Skip very short messages (likely not a briefing)
                                     if len(content) > 200:
