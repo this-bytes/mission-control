@@ -62,6 +62,36 @@
       font-family: monospace;
     }
 
+    /* ── Cron Strip ─────────────────────────────────────── */
+    #cron-strip {
+      display: flex; align-items: center; gap: 10px;
+      padding: 5px 20px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.68rem;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    #cron-strip .strip-label {
+      color: var(--muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    #cron-strip .strip-jobs {
+      display: flex; gap: 8px; overflow: hidden;
+    }
+    #cron-strip .strip-job {
+      white-space: nowrap;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 8px;
+      color: var(--accent);
+      cursor: pointer;
+    }
+    #cron-strip .strip-job:hover { border-color: var(--accent); }
+    #cron-strip .strip-job .job-time { color: var(--muted); font-size: 0.62rem; margin-left: 4px; }
+
     /* ── Status dots ────────────────────────────────────── */
     .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
     .dot-green  { background: var(--green); box-shadow: 0 0 5px var(--green); }
@@ -446,6 +476,11 @@
   <div class="clock" id="clock"></div>
 </div>
 
+<div id="cron-strip">
+  <span class="strip-label">⏰ Soon:</span>
+  <div class="strip-jobs" id="strip-jobs"></div>
+</div>
+
 <!-- ── Layout ────────────────────────────────────────────────────────────── -->
 <div id="layout">
 
@@ -674,9 +709,12 @@
       const tokens = s.total_tokens
         ? `· ${Math.round(s.total_tokens/100)/10}k tok`
         : s.last_prompt_tokens ? `· ~${Math.round(s.last_prompt_tokens/100)/10}k tok*` : '';
+      const name = (s.display_name || s.key || '—').length > 50
+        ? (s.display_name || s.key || '—').slice(0, 50) + '…'
+        : (s.display_name || s.key || '—');
       return `<div class="session-item">
         <div class="session-platform">${icon} ${s.platform}</div>
-        <div class="session-name">${s.display_name || s.key || '—'}</div>
+        <div class="session-name">${name}</div>
         <div class="session-meta">${s.message_count || 0} msgs ${tokens} · ${updated}</div>
       </div>`;
     }).join('');
@@ -730,6 +768,25 @@
     } else {
       addFeed('error', `Failed to trigger ${jobName}: ${(d && d.error) || 'unknown'}`);
     }
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     CRON STRIP
+  ══════════════════════════════════════════════════════════════ */
+  async function loadCronStrip() {
+    const d = await api('/api/cron-jobs');
+    const strip = $('strip-jobs');
+    if (!d.ok || !d.data || d.data.length === 0) {
+      strip.innerHTML = '<span style="color:var(--muted);font-size:0.65rem">No upcoming crons</span>';
+      return;
+    }
+    // Show next 6 crons sorted by next_run
+    const sorted = [...d.data].filter(j => j.next_run).sort((a, b) => a.next_run.localeCompare(b.next_run));
+    const soon = sorted.slice(0, 6);
+    strip.innerHTML = soon.map(j => {
+      const time = j.next_run ? j.next_run.slice(11, 16) : '';
+      return `<div class="strip-job" onclick="runCronByName('${j.name.replace(/'/g, "\\'")}')" title="Click to run now">${j.name}<span class="job-time">${time}</span></div>`;
+    }).join('');
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -1554,6 +1611,7 @@
       loadBriefing(),
       loadSkills(),
       loadSkillsForPalette(),
+      loadCronStrip(),
     ]);
     await Promise.all([
       loadGraph(),
@@ -1566,6 +1624,7 @@
     setInterval(loadSessions, 30000);
     setInterval(loadCrons, 30000);
     setInterval(loadBriefing, 60000);
+    setInterval(loadCronStrip, 30000);
     setInterval(loadPaperclipIssues, 60000);
     setInterval(loadPaperclipGoals, 60000);
   }
