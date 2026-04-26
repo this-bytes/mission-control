@@ -195,6 +195,42 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 08:15 UTC
+
+### Fix: Morning Briefing Panel
+
+**Problem:** Briefing panel showed "No briefing found" — morning briefing was in the session file but code couldn't find it.
+
+**Root cause (Phase 1):**
+1. Morning-briefing cron job (`477d9b0fce90`) fires at 21:00 UTC (07:00 AEST)
+2. Creates `session_cron_477d9b0fce90_20260426_210005.json`
+3. Other crons fire every ~5 min → session ranks **83rd by mtime** in the cron sessions list
+4. `get_briefing()` only scanned `[:50]` — too narrow
+5. Secondary filter looked for `"briefing-morning"` in first user message, but this session invokes `anh-ops` instead
+
+**Fix (Phase 3):**
+1. Widened scan from `[:50]` → `[:120]` (covers position 83)
+2. Added secondary acceptance: `"477d9b0fce90" in session_file.stem`
+
+**Also resolved:** Orphaned python process (PID 123738 from 07:03) was holding port 8420 — caused the 08:05 systemd restart to fail with `EADDRINUSE`. Killed it, service resumed normally.
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID fresh)
+- Git committed + pushed: `cb28e0d` ✅
+- `/api/briefing` returns morning brief ✅ (was `null` before fix)
+- All 10 API endpoints healthy ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Morning briefing quality** — content correct; formatting already improved
+4. **Panel drag-and-drop reorder** — bring back from old version
+5. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+
+---
+
 ## Session Log — 2026-04-27 07:00 UTC
 
 ### Changes Made

@@ -174,8 +174,23 @@
       flex-shrink: 0;
       height: 30px;
     }
-    .sec-header .title { font-weight: 600; }
-    .sec-header .actions { display: flex; gap: 6px; }
+    .sec-header.dragging { opacity: 0.4; }
+    .sec-header.drag-over { border-top: 2px solid var(--cyan); }
+    .sec-header .drag-handle {
+      cursor: grab;
+      color: var(--muted);
+      font-size: 11px;
+      margin-right: 4px;
+      padding: 0 2px;
+      opacity: 0;
+      transition: opacity 0.1s;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .sec-header .drag-handle:active { cursor: grabbing; }
+    .sec-header:hover .drag-handle { opacity: 1; }
+    .sec-header .title { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sec-header .actions { display: flex; gap: 6px; flex-shrink: 0; }
     .sec-btn {
       background: none;
       border: 1px solid var(--border);
@@ -944,7 +959,8 @@
   <div class="col" id="left-col">
 
     <!-- Status -->
-    <div class="sec-header">
+    <div class="sec-header draggable-panel" data-panel="status" draggable="true">
+      <span class="drag-handle" title="Drag to reorder">&#9776;</span>
       <span class="title">System</span>
       <div class="actions">
         <button class="sec-btn" onclick="loadStatus()" title="Refresh">&#8635;</button>
@@ -955,7 +971,8 @@
     </div>
 
     <!-- Sessions -->
-    <div class="sec-header">
+    <div class="sec-header draggable-panel" data-panel="sessions" draggable="true">
+      <span class="drag-handle" title="Drag to reorder">&#9776;</span>
       <span class="title">Sessions</span>
     </div>
     <div class="sec-body" id="sessions-body">
@@ -963,7 +980,8 @@
     </div>
 
     <!-- Cron Jobs -->
-    <div class="sec-header">
+    <div class="sec-header draggable-panel" data-panel="crons" draggable="true">
+      <span class="drag-handle" title="Drag to reorder">&#9776;</span>
       <span class="title">Cron Jobs</span>
       <div class="actions">
         <button class="sec-btn" onclick="loadCrons()" title="Refresh">&#8635;</button>
@@ -974,7 +992,8 @@
     </div>
 
     <!-- Briefing -->
-    <div class="sec-header">
+    <div class="sec-header draggable-panel" data-panel="briefing" draggable="true">
+      <span class="drag-handle" title="Drag to reorder">&#9776;</span>
       <span class="title">Briefing</span>
       <div class="actions">
         <button class="sec-btn" id="briefing-regen" title="Regenerate">&#8635;</button>
@@ -1240,6 +1259,99 @@ function updateConn(ok) {
 /* ── Legacy bridge: addMiniFeed -> addEvent ──────────────────── */
 function addMiniFeed(type, msg) {
   addEvent({ type, data: { text: msg }, ts: new Date().toISOString() });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PANEL DRAG-AND-DROP
+══════════════════════════════════════════════════════════════ */
+const PANEL_IDS = ['status', 'sessions', 'crons', 'briefing'];
+const LS_PANEL_ORDER = 'mc_panel_order';
+let _dragSrc = null;
+
+function getPanelEls() {
+  return PANEL_IDS.map(id => ({
+    id,
+    header: document.querySelector(`.draggable-panel[data-panel="${id}"]`),
+    body: document.getElementById(id + '-body'),
+  })).filter(p => p.header);
+}
+
+function getCurrentOrder() {
+  try {
+    return JSON.parse(localStorage.getItem(LS_PANEL_ORDER));
+  } catch { return null; }
+}
+
+function applyOrder(order) {
+  if (!order || !Array.isArray(order)) return;
+  const leftCol = document.getElementById('left-col');
+  const panels = getPanelEls();
+  order.forEach(id => {
+    const p = panels.find(p => p.id === id);
+    if (p) {
+      leftCol.appendChild(p.header);
+      leftCol.appendChild(p.body);
+    }
+  });
+}
+
+function saveOrder() {
+  const order = PANEL_IDS.map(id => {
+    const h = document.querySelector(`.draggable-panel[data-panel="${id}"]`);
+    return h ? id : null;
+  }).filter(Boolean);
+  localStorage.setItem(LS_PANEL_ORDER, JSON.stringify(order));
+}
+
+function initPanelDnD() {
+  const saved = getCurrentOrder();
+  if (saved) applyOrder(saved);
+
+  const panels = getPanelEls();
+  panels.forEach(({ id, header }) => {
+    header.addEventListener('dragstart', e => {
+      _dragSrc = id;
+      e.dataTransfer.effectAllowed = 'move';
+      header.classList.add('dragging');
+      // Delay so the ghost shows before opacity kicks in
+      setTimeout(() => header.classList.add('dragging'), 0);
+    });
+
+    header.addEventListener('dragend', () => {
+      header.classList.remove('dragging');
+      panels.forEach(p => p.header.classList.remove('drag-over'));
+      _dragSrc = null;
+    });
+
+    header.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (_dragSrc && _dragSrc !== id) {
+        header.classList.add('drag-over');
+      }
+    });
+
+    header.addEventListener('dragleave', () => {
+      header.classList.remove('drag-over');
+    });
+
+    header.addEventListener('drop', e => {
+      e.preventDefault();
+      header.classList.remove('drag-over');
+      if (!_dragSrc || _dragSrc === id) return;
+      const srcIdx = PANEL_IDS.indexOf(_dragSrc);
+      const dstIdx = PANEL_IDS.indexOf(id);
+      // Swap in the canonical order array
+      const order = [...PANEL_IDS];
+      order.splice(srcIdx, 1);
+      order.splice(dstIdx, 0, _dragSrc);
+      // Update canonical
+      PANEL_IDS.length = 0;
+      order.forEach(o => PANEL_IDS.push(o));
+      applyOrder(PANEL_IDS);
+      saveOrder();
+    });
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2320,6 +2432,7 @@ async function boot() {
   setInterval(loadBriefing, 60000);
   setInterval(loadMetrics, 30000);
   setInterval(loadSystemInfo, 30000);
+  initPanelDnD();
 }
 
 window.addEventListener('resize', () => { resizeCanvas(); });
