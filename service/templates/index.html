@@ -671,13 +671,19 @@
     list.innerHTML = d.data.slice(0, 6).map(s => {
       const icon = s.platform === 'discord' ? '💬' : s.platform === 'telegram' ? '✈️' : '🔌';
       const updated = s.updated_at ? s.updated_at.slice(0, 16).replace('T', ' ') : '—';
-      const tokens = s.total_tokens ? `· ${Math.round(s.total_tokens/100)/10}k tok` : '';
+      const tokens = s.total_tokens
+        ? `· ${Math.round(s.total_tokens/100)/10}k tok`
+        : s.last_prompt_tokens ? `· ~${Math.round(s.last_prompt_tokens/100)/10}k tok*` : '';
       return `<div class="session-item">
         <div class="session-platform">${icon} ${s.platform}</div>
         <div class="session-name">${s.display_name || s.key || '—'}</div>
         <div class="session-meta">${s.message_count || 0} msgs ${tokens} · ${updated}</div>
       </div>`;
     }).join('');
+    // Footnote for approximate token counts
+    if (d.data.some(s => s.last_prompt_tokens && !s.total_tokens)) {
+      list.innerHTML += '<p style="font-size:0.6rem;color:var(--muted);margin-top:6px">* prompt tokens (total not reported by Hermes)</p>';
+    }
   }
 
   /* ══════════════════════════════════════════════════════════════

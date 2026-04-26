@@ -195,6 +195,33 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-26 16:15 UTC
+
+### Changes Made
+
+**Briefing panel "Regenerate" button (NEW)**
+- Added 🔄 button (↻) next to "🌅 Briefing" panel label
+- Click triggers `morning-briefing` cron job immediately
+- Shows "Regenerating..." in yellow while running
+- Polls `/api/briefing` every 3s for up to 60s waiting for new session to appear
+- Auto-restores button state on completion or timeout
+- No backend changes — pure client-side enhancement
+
+### Current State
+- Service running on port 8420 (systemd, enabled, 4h 25min uptime) ✅
+- Git committed + pushed: `9018c73` (briefing regenerate button)
+- All endpoints verified: /api/status ✅ /api/briefing ✅ /api/cron-jobs ✅
+- systemd service confirmed running (was already enabled from prior session)
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **Token usage display** — `sessions.json` has `last_prompt_tokens` (81986) but `total_tokens/input_tokens/output_tokens` are always 0; Hermes doesn't populate these at write time
+2. **Memory graph panel** — type-based node coloring (person=blue, project=green, concept=purple), hover shows entity fact previews
+3. **Session token/cost display** — surface `last_prompt_tokens` from sessions.json in Sessions panel
+4. **Morning briefing panel polish** — make it more prominent (already has regenerate button now ✅)
+5. **Dependabot fixes** — 3 moderate GitHub vulnerabilities (low priority, no runtime impact)
+
 ## Session Log — 2026-04-26 15:11 UTC
 
 ### Changes Made

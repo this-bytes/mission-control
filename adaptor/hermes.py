@@ -294,6 +294,7 @@ class HermesAdaptor:
                 "total_tokens": info.get("total_tokens", 0),
                 "input_tokens": info.get("input_tokens", 0),
                 "output_tokens": info.get("output_tokens", 0),
+                "last_prompt_tokens": info.get("last_prompt_tokens", 0),
             })
 
         # Sort by updated_at desc
