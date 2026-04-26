@@ -195,6 +195,32 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-26 17:23 UTC
+
+### Changes Made
+
+**Sessions panel: token display fix (NEW)**
+- `last_prompt_tokens` added to `/api/sessions` response from sessions.json
+- Dashboard shows `~27k tok*` when `total_tokens=0` (always the case — Hermes doesn't populate total_tokens at write time)
+- Footnote added: `* prompt tokens (total not reported by Hermes)`
+
+### Current State
+- Service running on port 8420 (systemd, enabled, just restarted — 5s uptime) ✅
+- Git committed + pushed: `6f50815` (Sessions panel: show last_prompt_tokens)
+- All endpoints verified: /api/sessions returns `last_prompt_tokens=27372` ✅
+- Service restarted cleanly, all panels loading
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **Memory graph panel** — type-based node coloring (person=blue, project=green, concept=purple), hover shows entity fact previews
+2. **Token usage display** — DONE ✅ (this session)
+3. **Morning briefing panel polish** — make it more prominent (already has regenerate button ✅)
+4. **Dependabot fixes** — 3 moderate GitHub vulnerabilities (low priority)
+5. **Better streaming** — chunk_size=64 for perf (chunk_size=1 is correct but slow)
+
+---
+
 ## Session Log — 2026-04-26 16:15 UTC
 
 ### Changes Made
