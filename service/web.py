@@ -171,15 +171,6 @@ async def get_sessions():
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
-@app.get("/api/skills")
-async def get_skills():
-    try:
-        skills = await hermes.get_skills()
-        return {"ok": True, "data": skills}
-    except Exception as e:
-        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
-
-
 @app.get("/api/paperclip/issues")
 async def get_paperclip_issues(status: str = ""):
     """Paperclip issues — optionally filter by status (open,blocked,in_progress)."""

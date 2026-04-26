@@ -195,6 +195,43 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-26 19:40 UTC
+
+### Changes Made
+
+**1. Pending Crons Strip (NEW)**
+- Thin strip between topbar and main layout showing next 6 upcoming cron jobs
+- Each pill shows: job name + scheduled time (HH:MM)
+- Click any pill to trigger the job immediately (uses existing `runCronByName()`)
+- 30s auto-refresh alongside other panels
+- CSS: dark surface2 background, compact 0.68rem font
+
+**2. Session Display Name Truncation (FIX)**
+- Discord sessions were showing full first message (~98 chars) as display name
+- Now truncated at 50 chars with `…` ellipsis
+- Clean session names in the Sessions panel
+
+**3. Systemd Service Fix**
+- Root cause: `User=localadmin` in service file caused `GROUP` exit code (systemd couldn't resolve username in user-level service context)
+- Fix: removed `User=localadmin`, changed `WantedBy=multi-user.target` → `WantedBy=default.target`
+- Service now properly managed via `systemctl --user`
+- Previously was running as a manual foreground process (PID 78853)
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 84948)
+- Git committed + pushed: `50a866e` ✅
+- All API endpoints healthy: /api/ping ✅ /api/status ✅ /api/cron-jobs ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **Dependabot fixes** — 3 moderate GitHub vulnerabilities (low priority, no runtime impact)
+2. **Skills catalog** — `get_skills()` returns empty (no endpoint on Hermes), could read skills from `~/.hermes/skills/` directory directly
+3. **Memory graph panel** — 17 entities all "unknown" type, sparse edges; revisit when Hermes populates more
+4. **Morning briefing content** — improve quality/formatting
+
+---
+
 ## Session Log — 2026-04-26 18:25 UTC
 
 ### Changes Made
