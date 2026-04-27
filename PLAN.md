@@ -195,6 +195,36 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 11:30 UTC
+
+### Changes Made
+
+**1. Session Message Pagination (NEW)**
+- Backend: `HermesAdaptor.get_session_messages(session_id, offset=N, limit=M)` now returns `{messages, total, offset, limit}` — pages through messages from the start
+- Endpoint: `GET /api/sessions/{id}/messages?offset=0&limit=8` — supports any offset/limit
+- Frontend: clicking an expanded session shows first 8 messages; "Load N more" button fetches next page; "▲ N messages loaded" link jumps back to top
+- Tested: session with 75 messages paginates correctly at offset 0, 3, 72
+
+**2. Skill Invocation Hint (NEW)**
+- Added `<span id="cmd-skill-hint">` to command input bar (cyan, right of input)
+- `invokeSkill(name)` → fills `!name` in command bar + shows "Press Enter to invoke !name" hint
+- Hint cleared on any command submission or built-in command execution
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 143339, fresh restart)
+- Git committed + pushed: `998d4b6` ✅
+- All endpoints verified: /api/ping ✅ /api/status ✅ /api/cron-jobs ✅ /api/sessions ✅ /api/briefing ✅ /api/system-info ✅ /api/metrics ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Morning briefing quality** — content correct; formatting already improved
+4. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+
+---
+
 ## Session Log — 2026-04-27 10:20 UTC
 
 ### Changes Made
