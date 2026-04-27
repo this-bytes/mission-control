@@ -1109,20 +1109,20 @@ class HermesAdaptor:
     def get_skills_catalog(self) -> list[dict]:
         """
         Return all skills as [{name, description, tags, trigger, owner}].
-        Reads frontmatter from each SKILL.md.
+        Reads frontmatter from each SKILL.md in both category/ and category/skill/ layouts.
+        The Hermes skills directory has two patterns:
+        - category/SKILL.md          (category-level skill, e.g. briefings/SKILL.md)
+        - category/skill/SKILL.md    (individual skill, e.g. github/github-pr-workflow/SKILL.md)
+        Both are indexed.
         """
         skills_dir = self._hermes_home / "skills"
         if not skills_dir.exists():
             return []
 
         catalog = []
-        for skill_path in skills_dir.iterdir():
-            if not skill_path.is_dir():
-                continue
-            skill_md = skill_path / "SKILL.md"
-            if not skill_md.exists():
-                continue
 
+        def _read_skill(skill_md: Path, category: str) -> dict:
+            """Parse a SKILL.md file and return a catalog entry dict."""
             try:
                 content = skill_md.read_text(errors="replace")
                 meta = {}
@@ -1141,28 +1141,55 @@ class HermesAdaptor:
                     elif in_fm:
                         fm_lines.append(line)
 
-                # Extract description: first non-frontmatter line after ## name heading
                 desc = meta.get("description", "")
-                # Try to find the first trigger section
                 trigger = ""
                 if "## Trigger" in content:
                     trig_section = content.split("## Trigger")[1].split("##")[0]
-                    # Get first 200 chars of trigger section
                     trigger = trig_section.strip()[:200].replace("\n", " ")
 
-                catalog.append({
-                    "name": skill_path.name,
+                return {
+                    "name": skill_md.parent.name,
+                    "category": category,
                     "description": desc,
                     "tags": meta.get("tags", ""),
                     "trigger": trigger,
                     "owner": meta.get("owner", ""),
                     "version": meta.get("version", ""),
-                })
+                }
             except Exception:
+                return None
+
+        for category_path in skills_dir.iterdir():
+            if not category_path.is_dir() or category_path.name.startswith("."):
                 continue
 
-        catalog.sort(key=lambda x: x["name"])
-        return catalog
+            # Pattern 1: category/SKILL.md (e.g. briefings/SKILL.md)
+            category_md = category_path / "SKILL.md"
+            if category_md.exists():
+                entry = _read_skill(category_md, category_path.name)
+                if entry:
+                    catalog.append(entry)
+
+            # Pattern 2: category/skill/SKILL.md (e.g. github/github-pr-workflow/SKILL.md)
+            for skill_path in category_path.iterdir():
+                if not skill_path.is_dir() or skill_path.name.startswith("."):
+                    continue
+                skill_md = skill_path / "SKILL.md"
+                if skill_md.exists():
+                    entry = _read_skill(skill_md, category_path.name)
+                    if entry:
+                        catalog.append(entry)
+
+        seen_keys = set()
+        deduped = []
+        for entry in catalog:
+            key = (entry.get("category", ""), entry.get("name", ""))
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            deduped.append(entry)
+        deduped.sort(key=lambda x: (x.get("category", ""), x.get("name", "")))
+        return deduped
 
     # ── Session History Search ─────────────────────────────────────────────────
     # Uses Hermes's own FTS5 index on state.db for full-text search.
