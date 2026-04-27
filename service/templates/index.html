@@ -426,6 +426,25 @@
 
     /* ── Graph ─────────────────────────────────────────────── */
     #graph-canvas { flex: 1; cursor: grab; }
+    #graph-tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(10,12,14,0.96);
+      border: 1px solid var(--cyan);
+      border-radius: 3px;
+      padding: 5px 9px;
+      font-size: 10px;
+      font-family: var(--font);
+      color: var(--text-bright);
+      display: none;
+      z-index: 100;
+      white-space: nowrap;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #graph-tooltip .tt-name { color: var(--cyan); font-weight: 600; font-size: 11px; }
+    #graph-tooltip .tt-type { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 1px; }
     #graph-detail {
       padding: 8px 12px;
       background: var(--surface);
@@ -1051,6 +1070,7 @@
     <!-- Graph -->
     <div class="tab-panel active" id="panel-graph">
       <canvas id="graph-canvas" style="flex:1;min-height:0;"></canvas>
+      <div id="graph-tooltip"></div>
       <div id="graph-detail">
         <span class="detail-empty">Click any node to explore connections</span>
       </div>
@@ -1918,38 +1938,67 @@ class Graph {
     }
   }
 
-  draw() {
+  draw(focusNodeId) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Pre-compute node degree
+    const degree = {};
+    for (const n of this.nodes) degree[n.id] = 0;
     for (const e of this.edges) {
+      degree[e.source.id] = (degree[e.source.id] || 0) + 1;
+      degree[e.target.id] = (degree[e.target.id] || 0) + 1;
+    }
+
+    // Connected set for focus dimming
+    const connected = new Set([focusNodeId]);
+    if (focusNodeId) {
+      for (const e of this.edges) {
+        if (e.source.id === focusNodeId) connected.add(e.target.id);
+        if (e.target.id === focusNodeId) connected.add(e.source.id);
+      }
+    }
+
+    for (const e of this.edges) {
+      const dim = focusNodeId && !connected.has(e.source.id) && !connected.has(e.target.id);
       ctx.beginPath();
       ctx.moveTo(e.source.x, e.source.y);
       ctx.lineTo(e.target.x, e.target.y);
-      ctx.strokeStyle = 'rgba(0,180,212,0.2)';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = dim ? 'rgba(0,180,212,0.05)' : 'rgba(0,180,212,0.25)';
+      ctx.lineWidth = (focusNodeId && (e.source.id === focusNodeId || e.target.id === focusNodeId)) ? 2 : 1;
       ctx.stroke();
     }
     for (const n of this.nodes) {
       const hover = n === _hoveredNode;
-      const r = hover ? 10 : 7;
+      const focused = n.id === focusNodeId;
+      const dim = focusNodeId && !connected.has(n.id);
+      const deg = degree[n.id] || 0;
+      const r = hover ? 11 : focused ? 10 : Math.max(5, Math.min(9, 5 + deg));
       const hue = hashColor(n.name);
       ctx.beginPath();
       ctx.arc(n.x, n.y, r, 0, Math.PI*2);
-      ctx.fillStyle = hover ? `hsl(${hue},80%,60%)` : `hsl(${hue},55%,42%)`;
+      ctx.fillStyle = dim
+        ? `hsl(${hue},30%,18%)`
+        : hover ? `hsl(${hue},80%,60%)`
+        : focused ? `hsl(${hue},70%,52%)`
+        : `hsl(${hue},55%,42%)`;
       ctx.fill();
-      ctx.strokeStyle = hover ? '#fff' : `hsl(${hue},55%,62%)`;
-      ctx.lineWidth = hover ? 2 : 1;
+      ctx.strokeStyle = dim ? 'rgba(255,255,255,0.08)' : hover ? '#fff' : `hsl(${hue},55%,62%)`;
+      ctx.lineWidth = hover ? 2 : focused ? 1.5 : 1;
       ctx.stroke();
-      ctx.fillStyle = hover ? '#fff' : 'rgba(180,180,180,0.85)';
-      ctx.font = `${hover?'bold ':''}${hover?12:10}px JetBrains Mono, monospace`;
-      ctx.textAlign = 'center';
-      ctx.fillText(n.label, n.x, n.y + r + 13);
+      if (!dim) {
+        ctx.fillStyle = hover ? '#fff' : 'rgba(180,180,180,0.85)';
+        ctx.font = `${hover?'bold ':''}${hover?12:10}px JetBrains Mono, monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText(n.label, n.x, n.y + r + 13);
+      }
     }
   }
-}
 
 let _graph = null;
 let _hoveredNode = null;
+let _focusedNodeId = null; // node whose connections are highlighted (click-selected)
 let _nodePositions = {};
+let _tooltipX = 0, _tooltipY = 0;
 
 function hashColor(s) {
   let h = 0;
@@ -1984,28 +2033,23 @@ function animateGraph() {
   if (!_graph) return;
   function frame() {
     for (let i = 0; i < 3; i++) _graph.tick();
-    _graph.draw();
+    _graph.draw(_focusedNodeId);
     requestAnimationFrame(frame);
   }
   frame();
 }
-
-canvas.addEventListener('mousemove', e => {
-  if (!_graph) return;
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  _hoveredNode = null;
-  for (const n of _graph.nodes) {
-    if ((n.x-mx)**2 + (n.y-my)**2 < 144) { _hoveredNode = n; break; }
-  }
-  canvas.style.cursor = _hoveredNode ? 'pointer' : 'grab';
-});
 
 // ── Entity detail panel ──────────────────────────────────────
 let _selectedEntity = null; // currently selected entity for drill-down
 
 function renderEntityDetail(entityId) {
   const detail = $('graph-detail');
+  if (!entityId) {
+    _selectedEntity = null;
+    _focusedNodeId = null;
+    detail.innerHTML = '<span class="detail-empty">Click any node to explore connections</span>';
+    return;
+  }
   const entity = _graph ? _graph.nodes.find(n => n.id === entityId) : null;
   if (!entity) return;
   _selectedEntity = entity;
@@ -2041,11 +2085,54 @@ function renderEntityDetail(entityId) {
   detail.innerHTML = html;
 }
 
-canvas.addEventListener('click', () => {
+canvas.addEventListener('mousemove', e => {
+  if (!_graph) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  _hoveredNode = null;
+  for (const n of _graph.nodes) {
+    if ((n.x-mx)**2 + (n.y-my)**2 < 144) { _hoveredNode = n; break; }
+  }
+  canvas.style.cursor = _hoveredNode ? 'pointer' : 'grab';
+
+  // Tooltip
+  const tt = $('graph-tooltip');
+  if (_hoveredNode) {
+    tt.innerHTML = `<div class="tt-name">${esc(_hoveredNode.name)}</div><div class="tt-type">${esc(_hoveredNode.type || 'concept')}</div>`;
+    const panelRect = canvas.parentElement.getBoundingClientRect();
+    const cx = rect.left + mx - panelRect.left;
+    const cy = rect.top + my - panelRect.top;
+    tt.style.display = 'block';
+    tt.style.left = (cx + 14) + 'px';
+    tt.style.top  = (cy - 36) + 'px';
+  } else {
+    tt.style.display = 'none';
+  }
+});
+
+// Click → select node (focus mode)
+canvas.addEventListener('click', e => {
   if (!_graph || !_hoveredNode) return;
-  renderEntityDetail(_hoveredNode.id);
-  // Save position
-  _nodePositions[_hoveredNode.id] = { x: _hoveredNode.x, y: _hoveredNode.y };
+  if (_focusedNodeId === _hoveredNode.id) {
+    // Toggle off
+    _focusedNodeId = null;
+    renderEntityDetail(null);
+  } else {
+    _focusedNodeId = _hoveredNode.id;
+    renderEntityDetail(_focusedNodeId);
+    // Save position
+    _nodePositions[_hoveredNode.id] = { x: _hoveredNode.x, y: _hoveredNode.y };
+  }
+});
+
+// Double-click → fit all nodes on canvas
+canvas.addEventListener('dblclick', () => {
+  if (!_graph || !_graph.nodes.length) return;
+  _focusedNodeId = null;
+  renderEntityDetail(null);
+  // Trigger a tick burst then resize to fit
+  for (let i = 0; i < 60; i++) _graph.tick();
+  _graph.draw(null);
 });
 
 // Clicking a connection name in detail panel drills into that entity
