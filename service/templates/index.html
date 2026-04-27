@@ -285,6 +285,7 @@
     }
     .cron-row:last-child { border-bottom: none; }
     .cron-row-top { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+    .cron-error { font-size: 9px; color: var(--red); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cron-name { flex: 1; color: var(--text-bright); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cron-run-btn {
       background: none;
@@ -1605,9 +1606,10 @@ async function loadCrons() {
   body.innerHTML = d.data.slice(0, 15).map(j => {
     const statusCls = j.last_status === 'error' ? 'err' : j.last_status === 'ok' ? 'ok' : '';
     const next = j.next_run ? j.next_run.slice(11, 16) : '—';
+    const errorLine = (j.last_status === 'error' && j.last_error) ? `<div class="cron-error">&#9888; ${esc(j.last_error.slice(0, 80))}</div>` : '';
     return `<div class="cron-row">
       <div class="cron-row-top">
-        <span class="cron-name" title="${esc(j.name)}">${esc(j.name)}</span>
+        <span class="cron-name" title="${esc(j.name + '\n' + (j.prompt_preview || ''))}">${esc(j.name)}</span>
         <button class="cron-run-btn" onclick="runCron('${esc(j.id)}','${esc(j.name.replace(/'/g,""))}')">RUN</button>
       </div>
       <div class="cron-meta">
@@ -1615,6 +1617,7 @@ async function loadCrons() {
         <span class="cron-status ${statusCls}">${j.last_status || 'never'}</span>
         <span class="cron-next">next ${next}</span>
       </div>
+      ${errorLine}
     </div>`;
   }).join('');
 

@@ -195,6 +195,44 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 18:30 UTC
+
+### Changes Made
+
+**Session Search (NEW)**
+
+Sessions panel had no search — you had to scroll through the list to find a session.
+
+Fix: live search bar added to Sessions panel header (right-aligned in the panel title row).
+
+Backend (`adaptor/hermes.py` + `service/web.py`):
+- `GET /api/sessions?q=term` — filters by name match OR first user message content match
+- `HermesAdaptor.get_active_sessions(q)` — reads session files, extracts first user message as `msg_preview` for content search
+- Returns up to 20 results when searching (10 when browsing recent)
+
+Frontend (`service/templates/index.html`):
+- Sessions panel header: `<input id="sessions-search">` inline with title, right-aligned via `margin-left:auto`
+- `loadSessions()` reads search input, debounces 300ms, calls `/api/sessions?q=…`
+- When search is active: shows `msg_preview` snippet (first 120 chars) under each row
+- Escape key clears the search and restores normal session list
+- Gauge shows `—` when search returns 0 (instead of `0`)
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 170024, fresh restart)
+- Git committed: `1298357` ✅
+- `/api/sessions` returns 6 recent sessions ✅
+- `/api/sessions?q=telegram` returns 5 matching sessions ✅
+- `/api/sessions?q=homelab` returns 0 (correct — not in first user message) ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Homelab network fix** — all 10.87.1.0/24 hosts unreachable from server, not a code issue
+
+---
+
 ## Session Log — 2026-04-27 17:24 UTC
 
 ### Changes Made
