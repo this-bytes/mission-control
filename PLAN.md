@@ -195,6 +195,45 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 15:05 UTC
+
+### Changes Made
+
+**1. Briefing Fix — Scan Window Widened (ROOT CAUSE)**
+
+Root cause investigation (Phase 1): `morning_briefing` returned `null`.
+- Morning briefing runs at 21:00 UTC, sits at position 125 out of 345 total cron sessions
+- Heavy cron churn: Maxi Heartbeat every 15min (~64/day), mission-control-iterate hourly (~17/day)
+- `[:120]` scan window was 5 slots too narrow — briefing at position 125 was excluded
+- Fix: widened scan from 120 → 300, updated comment with churn rate math
+
+**2. Quick Links Tab (NEW)**
+
+- New **Links** tab in right column tab bar — 7th tab
+- 6 one-click shortcut cards in a 2-column grid:
+  - GitHub (this-bytes/mission-control)
+  - GitHub PRs (pull requests queue)
+  - Google Workspace (admin console)
+  - Paperclip (issue tracker at 10.87.1.201:3100)
+  - Homelab (gateway at 10.87.1.1)
+  - Hermes API (localhost:8642)
+- Each card: name + description + live UP/DOWN status via async `fetch` HEAD with 2s timeout
+- Cards styled with Mission Control dark theme, cyan hover border
+- No backend changes needed
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID fresh restart, ~3h30min uptime)
+- Git committed + pushed: `23ce057` ✅
+- All endpoints verified ✅
+- Briefing: correctly finds morning briefing at position 125 ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Homelab network fix** — all 10.87.1.0/24 hosts unreachable from server, not a code issue
+
 ## Session Log — 2026-04-27 13:50 UTC
 
 ### Changes Made
