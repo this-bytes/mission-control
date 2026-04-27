@@ -195,6 +195,44 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 17:24 UTC
+
+### Changes Made
+
+**Events Panel — Live Event Emissions (NEW)**
+
+Problem: Events panel was always empty after service restart because `_event_log` is in-memory and the poller only emits on *change*.
+
+Fix: Two new event emission points added:
+
+1. **Startup event** — `startup()` now emits `mission_control_startup` on boot with current platform states (telegram, discord, api_server) + Hermes version. Events panel is never empty on load.
+
+2. **Briefing event** — `get_briefing()` now emits `briefing_loaded` every time the briefing API is called (polled every 30s by the dashboard). Shows first 120 chars of briefing content.
+
+Frontend rendering added for both:
+- `briefing_loaded` → purple badge
+- `mission_control_startup` → cyan badge
+
+**Bug fixed:** `morning_briefing` returned from `get_briefing()` is a dict, not a string. Added `str()` wrapper before slicing to prevent `TypeError: unhashable type: 'slice'`.
+
+**Bug fixed:** `emit()` call wrapped in try/except so event emission failures never break the briefing API response.
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID fresh restart)
+- Git committed: `468e6a8` ✅
+- All 9 API endpoints verified ✅
+- Events panel now shows startup + briefing events live ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Morning briefing quality** — content already improved; formatting solid
+4. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+
+---
+
 ## Session Log — 2026-04-27 08:05 UTC
 
 ### Root Cause: Port 8420 Conflict on Restart
