@@ -237,10 +237,10 @@ async def get_session_messages(session_id: str, limit: int = 8, offset: int = 0)
 
 
 @app.get("/api/sessions")
-async def get_sessions():
-    """Active sessions across all platforms."""
+async def get_sessions(q: str = ""):
+    """Active sessions across all platforms. Filter by q (searches name + message preview)."""
     try:
-        sessions = await hermes.get_active_sessions()
+        sessions = await hermes.get_active_sessions(q=q)
         return {"ok": True, "data": sessions}
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)

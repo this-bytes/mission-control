@@ -1022,6 +1022,8 @@
     <div class="sec-header draggable-panel" data-panel="sessions" draggable="true">
       <span class="drag-handle" title="Drag to reorder">&#9776;</span>
       <span class="title">Sessions</span>
+      <input id="sessions-search" type="text" placeholder="Search…" spellcheck="false"
+        style="margin-left:auto;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--font);font-size:10px;padding:2px 6px;border-radius:2px;width:110px;outline:none;" />
     </div>
     <div class="sec-body" id="sessions-body">
       <div class="loading">Loading...</div>
@@ -1461,16 +1463,22 @@ async function loadStatus() {
    SESSIONS
 ══════════════════════════════════════════════════════════════ */
 async function loadSessions() {
-  const d = await api('/api/sessions');
+  const q = ($('sessions-search') || {}).value || '';
+  const param = q ? `?q=${encodeURIComponent(q)}` : '';
+  const d = await api('/api/sessions' + param);
   const body = $('sessions-body');
-  setGauge('g-sessions', d.ok && d.data ? d.data.length : '—');
+  const count = d.ok && d.data ? d.data.length : 0;
+  setGauge('g-sessions', count === 0 && q ? '—' : count);
   if (!d.ok || !d.data || d.data.length === 0) {
-    body.innerHTML = '<div class="empty-msg">No sessions</div>'; return;
+    body.innerHTML = `<div class="empty-msg">${q ? 'No results for "' + esc(q) + '"' : 'No sessions'}</div>`;
+    return;
   }
-  body.innerHTML = d.data.slice(0, 10).map(s => {
+  body.innerHTML = d.data.map(s => {
     const icon = s.platform === 'discord' ? 'DC' : s.platform === 'telegram' ? 'TG' : 'API';
     const updated = s.updated_at ? s.updated_at.slice(0, 16).replace('T', ' ') : '—';
     const tokens = s.total_tokens ? `${(s.total_tokens/1000).toFixed(1)}k` : '';
+    // When searching, show a content snippet if msg_preview is available
+    const preview = (q && s.msg_preview) ? `<div style="font-size:9px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.msg_preview.slice(0, 120))}</div>` : '';
     return `<div class="session-row" id="sess-${s.session_id}" onclick="toggleSession('${s.session_id}')">
       <div class="session-row-header">
         <span class="sess-platform">${icon}</span>
@@ -1478,6 +1486,7 @@ async function loadSessions() {
         <span class="sess-msgs">${s.message_count || 0}msg</span>
       </div>
       <div class="sess-meta">${updated}${tokens ? ' · ' + tokens + 'tok' : ''}</div>
+      ${preview}
       <div class="session-msgs-list" id="sess-msgs-${s.session_id}" style="display:none;"></div>
     </div>`;
   }).join('');
@@ -2756,6 +2765,19 @@ async function boot() {
   setInterval(loadMetrics, 30000);
   setInterval(loadSystemInfo, 30000);
   initPanelDnD();
+
+  // Session search — live filter on keystroke
+  const sSearch = $('sessions-search');
+  if (sSearch) {
+    sSearch.addEventListener('input', () => {
+      // Debounce 300ms so we don't hammer the API on fast typing
+      clearTimeout(window._sessSearchTimer);
+      window._sessSearchTimer = setTimeout(loadSessions, 300);
+    });
+    sSearch.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { sSearch.value = ''; loadSessions(); }
+    });
+  }
 }
 
 window.addEventListener('resize', () => { resizeCanvas(); });

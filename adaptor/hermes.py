@@ -253,10 +253,12 @@ class HermesAdaptor:
             "sessions": sessions,
         }
 
-    async def get_active_sessions(self) -> list[dict]:
+    async def get_active_sessions(self, q: str = "") -> list[dict]:
         """
         Return the most recent sessions across all platforms.
         Reads sessions.json as the index, then enriches with recent message count.
+        If q is provided, filters by name (display_name/key) or message preview content.
+        Returns up to 20 results (10 when no search, all matches when searching).
         """
         sessions_file = self._hermes_home / "sessions" / "sessions.json"
         if not sessions_file.exists():
@@ -267,6 +269,7 @@ class HermesAdaptor:
         except Exception:
             return []
 
+        q_lower = q.lower().strip() if q else ""
         result = []
         for key, info in index.items():
             # Parse key: 'agent:main:platform:channel_type:channel_id'
@@ -276,18 +279,35 @@ class HermesAdaptor:
             # Find the session file
             session_file = self._hermes_home / "sessions" / f"session_{session_id}.json"
             msg_count = 0
+            msg_preview = ""
             if session_file.exists():
                 try:
                     with session_file.open() as f:
                         s = json.load(f)
                         msg_count = s.get("message_count", 0)
+                        # Grab first user message as preview for search
+                        msgs = s.get("messages", [])
+                        for m in msgs:
+                            if m.get("role") == "user":
+                                msg_preview = m.get("content", "")[:300]
+                                break
                 except Exception:
                     pass
+
+            display_name = info.get("display_name", key)
+
+            # Apply search filter
+            if q_lower:
+                name_match = q_lower in display_name.lower() or q_lower in key.lower()
+                content_match = q_lower in msg_preview.lower()
+                if not (name_match or content_match):
+                    continue
+
             result.append({
                 "key": key,
                 "platform": platform,
                 "session_id": session_id,
-                "display_name": info.get("display_name", key),
+                "display_name": display_name,
                 "created_at": info.get("created_at", ""),
                 "updated_at": info.get("updated_at", ""),
                 "message_count": msg_count,
@@ -295,11 +315,12 @@ class HermesAdaptor:
                 "input_tokens": info.get("input_tokens", 0),
                 "output_tokens": info.get("output_tokens", 0),
                 "last_prompt_tokens": info.get("last_prompt_tokens", 0),
+                "msg_preview": msg_preview,  # included for search transparency
             })
 
         # Sort by updated_at desc
         result.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
-        return result[:10]  # top 10 recent
+        return result[:20 if q else 10]
 
     async def get_session_messages(self, session_id: str, limit: int = 8, offset: int = 0) -> dict:
         """
