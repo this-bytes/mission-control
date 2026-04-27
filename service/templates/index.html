@@ -942,6 +942,8 @@
     .event-badge.command_executed { background: rgba(245,166,35,0.12); color: var(--amber); }
     .event-badge.error { background: rgba(239,68,68,0.15); color: var(--red); }
     .event-badge.system { background: var(--surface3); color: var(--muted); }
+    .event-badge.briefing_loaded { background: rgba(168,85,247,0.15); color: #c084fc; }
+    .event-badge.mission_control_startup { background: rgba(0,180,212,0.15); color: var(--cyan); }
     .event-badge.default { background: var(--surface3); color: var(--muted); }
     .event-msg { color: var(--text); flex: 1; word-break: break-all; }
     .event-empty { color: var(--muted); font-size: 9px; padding: 12px; text-align: center; }
@@ -2626,6 +2628,11 @@ function renderEvents() {
       msg = `${data.source || 'error'}: ${data.msg || JSON.stringify(data)}`;
     } else if (ev.type === 'system') {
       msg = JSON.stringify(data).slice(0, 80);
+    } else if (ev.type === 'briefing_loaded') {
+      msg = `Briefing loaded: ${(data.preview || '').slice(0, 60)}${(data.preview || '').length > 60 ? '…' : ''}`;
+    } else if (ev.type === 'mission_control_startup') {
+      const p = Object.keys(data.platforms || {}).join(', ');
+      msg = `Mission Control ${data.version} booted${p ? ' — ' + p + ' connected' : ''}${data.error ? ' (Hermes error: ' + data.error + ')' : ''}`;
     } else {
       msg = JSON.stringify(data).slice(0, 80);
     }

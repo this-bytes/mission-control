@@ -195,6 +195,36 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 08:05 UTC
+
+### Root Cause: Port 8420 Conflict on Restart
+
+**Problem:** Service was stuck in `activating (auto-restart)` crash loop — bind error `Errno 98: address already in use`.
+
+**Root cause (Phase 1):**
+1. Old `run.py` process (PID 157437) from a previous session was still holding port 8420
+2. `systemctl restart` couldn't kill it (no interactive auth available in cron context)
+3. `fuser -k 8420/tcp` successfully killed the orphaned process (PID 161659 was the actual holder when checked via `fuser 8420/tcp`)
+4. Service resumed normally after port freed
+
+**Fix:** Used `fuser -k 8420/tcp` to free the port, then `systemctl --user restart mission-control` to bring service back up.
+
+**Prevention:** The service file has `Restart=always` which is correct. The orphan process likely survived from a manual debug session before the last scheduled cron run.
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 161699, fresh restart)
+- Git working tree clean ✅
+- All platforms: telegram ✅, discord ✅, api_server ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Homelab network fix** — all 10.87.1.0/24 hosts unreachable from server, not a code issue
+
+---
+
 ## Session Log — 2026-04-27 15:05 UTC
 
 ### Changes Made

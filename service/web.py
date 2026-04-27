@@ -211,6 +211,14 @@ async def get_briefing():
     """Morning briefing: recent conversations, pending crons, latest briefing output."""
     try:
         data = await hermes.get_briefing()
+        # Emit event so the Events panel picks up briefing activity
+        # (fire-and-forget — errors here must not break the briefing response)
+        try:
+            preview = str(data.get("morning_briefing") or "")[:120]
+            asyncio.create_task(emit("briefing_loaded", {"session": data.get("session_id", ""), "preview": preview}))
+        except Exception as emit_err:
+            import logging
+            logging.getLogger().warning(f"emit failed (non-fatal): {emit_err}")
         return {"ok": True, "data": data}
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
@@ -447,6 +455,17 @@ async def post_command_stream(request: Request):
 @app.on_event("startup")
 async def startup():
     asyncio.create_task(_poll_hermes())
+    # Emit startup event so the Events panel is never empty on fresh load
+    try:
+        status = await hermes.get_status()
+        platforms = {n: {"state": p.state, "error": p.error} for n, p in status.platforms.items()}
+        await emit("mission_control_startup", {
+            "version": "0.11.0",
+            "platforms": platforms,
+            "model": status.model,
+        })
+    except Exception:
+        await emit("mission_control_startup", {"version": "0.11.0", "error": "could not reach Hermes"})
 
 
 async def _poll_hermes():
