@@ -263,6 +263,81 @@ Bug fixed: `qLower` was referenced without `const` declaration, leaking to globa
 
 ---
 
+## Session Log — 2026-04-28 05:43 UTC
+
+### Changes Made
+
+**Graph: Type Inference + Type-Based Color Coding (NEW)**
+
+Problem: All 27 graph nodes had `type=unknown` because Hermes's memory_store.db leaves `entity_type` NULL for all entries. The graph rendered as 27 random colors — no semantic grouping.
+
+Root cause (Phase 1): `entities.entity_type` column is NULL for every row — Hermes doesn't populate it.
+
+Fix — 2-part:
+
+1. **`adaptor/hermes.py`** — Added `_infer_type(name)` keyword classifier. Maps unknown/empty types to one of 9 categories:
+   - `system` — homelab, docker, nixos, arr, radarr, sonarr, n8n, nginx, etc.
+   - `agent` — aaron, maxi, hermes, cron, paperclip, openclaw, runner, etc.
+   - `project` — github, repo, branch, commit, pipeline, workflow, ci/, etc.
+   - `credential` — token, key, secret, pat, oauth, api_key, etc.
+   - `task` — pending, todo, action item, ticket, issue, bug, etc.
+   - `document` — doc, obsidian, vault, wiki, markdown, architecture, etc.
+   - `service` — api, service, endpoint, webhook, gateway, app/, skill, etc.
+   - `content` — blog, post, article, video, draft, script, etc.
+   - `concept` — fallback for conversational snippets
+
+   Also added `node_count`, `edge_count`, `type_distribution` to the graph response for frontend use.
+
+2. **`service/templates/index.html`** — Added `TYPE_HUES` color map (8 distinct hues) and `typeHue(node)` function. Replaced `hashColor(n.name)` with `typeHue(n)` in `Graph.draw()`. Graph now shows semantically grouped colors:
+   - system: blue (200°) — Home Assistant
+   - agent: purple (280°) — maxi, cron entities
+   - task: amber (45°) — pending items
+   - credential: orange (30°) — tokens/keys
+   - concept: random hash — conversational snippets
+
+Result: 27 nodes now typed: 1 system, 5 agent, 2 task, 1 credential, 18 concept (conversational snippets that don't match infrastructure keywords — expected).
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 244223, ~3min uptime)
+- Git committed + pushed: `55098e2` ✅
+- All 11 API endpoints verified healthy ✅
+- Graph now shows typed colors instead of random per-node colors ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph** — 18/27 nodes still "concept" (conversational memory not entity); Hermes memory_store sparse, would need Hermes to populate entity_type
+3. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+4. **Graph detail panel** — clicking a node shows detail pane but no edges listed; could show connected entities
+
+---
+
+## Session Log — 2026-04-28 05:33 UTC
+
+### Changes Made
+
+**Git History Cleanup — Squash Previous Commits**
+
+Pushed all prior in-progress commits to clean up working tree:
+- Squashed `399c81b` (skills category dropdown) and `670d59d` (session log) into one clean push
+- Working tree now clean, `master` on GitHub matches local
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID fresh, uptime ~1min)
+- Git committed + pushed: `670d59d` ✅
+- 28 categories in skills dropdown ✅
+- Category + text filter compose correctly ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+
+---
+
 ## Session Log — 2026-04-28 01:20 UTC
 
 ### Changes Made
