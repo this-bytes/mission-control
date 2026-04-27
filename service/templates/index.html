@@ -606,6 +606,8 @@
       padding: 6px 10px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
     }
     #skills-filter-input {
       width: 100%;
@@ -1366,7 +1368,10 @@
     <!-- Skills -->
     <div class="tab-panel" id="panel-skills">
       <div id="skills-filter-wrap">
-        <input id="skills-filter-input" type="text" placeholder="Filter skills..." oninput="filterSkills()" />
+        <select id="skills-cat-select" onchange="filterSkills()" style="margin-right:6px;background:var(--surface3);border:1px solid var(--border);border-radius:2px;padding:4px 6px;color:var(--text);font-family:var(--font);font-size:11px;outline:none;cursor:pointer;flex-shrink:0;">
+          <option value="">All categories</option>
+        </select>
+        <input id="skills-filter-input" type="text" placeholder="Filter skills..." oninput="filterSkills()" style="flex:1;" />
       </div>
       <div id="skills-list">
         <div class="loading">Loading...</div>
@@ -2887,21 +2892,30 @@ async function loadGoals() {
 async function loadSkills() {
   const d = await api('/api/skills-catalog');
   _skillsCatalog = d.ok && d.data ? d.data : [];
+  // Populate category dropdown
+  const cats = [...new Set(_skillsCatalog.map(s => s.category).filter(Boolean))].sort();
+  const sel = $('skills-cat-select');
+  sel.innerHTML = '<option value="">All categories</option>' +
+    cats.map(c => `<option value="${esc(c)}">${esc(c)} (${_skillsCatalog.filter(s=>s.category===c).length})</option>`).join('');
   filterSkills();
 }
 
 function filterSkills() {
   const q = ($('skills-filter-input') || {}).value || '';
-  const list = $('skills-list');
-  const filtered = q
-    ? _skillsCatalog.filter(s =>
-        s.name.toLowerCase().includes(q.toLowerCase()) ||
-        (s.description||'').toLowerCase().includes(q.toLowerCase()) ||
-        (s.tags||'').toLowerCase().includes(q.toLowerCase()))
-    : _skillsCatalog;
+  const cat = ($('skills-cat-select') || {}).value || '';
+  let filtered = _skillsCatalog;
+  if (cat) filtered = filtered.filter(s => s.category === cat);
+  if (q) {
+    const qLower = q.toLowerCase();
+    filtered = filtered.filter(s =>
+      s.name.toLowerCase().includes(qLower) ||
+      (s.description||'').toLowerCase().includes(qLower) ||
+      (s.tags||'').toLowerCase().includes(qLower));
+  }
   if (filtered.length === 0) {
     list.innerHTML = `<div class="empty-msg">${q ? 'No skills match "'+esc(q)+'"' : 'No skills'}</div>`; return;
   }
+  const list = $('skills-list');
   list.innerHTML = filtered.map(s => {
     const tags = s.tags ? s.tags.replace(/[\[\]]/g,'').split(',').map(t => `<span class="skill-tag">${esc(t.trim())}</span>`).join('') : '';
     const owner = s.owner ? `<span class="skill-owner">by ${esc(s.owner)}</span>` : '';

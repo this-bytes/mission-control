@@ -195,6 +195,38 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-28 01:20 UTC
+
+### Changes Made
+
+**Skills Catalog Bug Fix — 111 skills now indexed (was 20)**
+
+Root cause: `get_skills_catalog()` in `adaptor/hermes.py` only scanned top-level skill directories (`category/SKILL.md`). But Hermes uses TWO layout patterns:
+1. `category/SKILL.md` — category-level skills (e.g. `briefings/SKILL.md`)
+2. `category/skill/SKILL.md` — individual skills (e.g. `github/github-pr-workflow/SKILL.md`)
+
+The second pattern is far more common (~100 individual skills vs ~20 category skills), so 80% of the catalog was invisible.
+
+Fix: Rewrote `get_skills_catalog()` to handle both patterns. Added deduplication by `(category, name)` key to handle the one duplicate (`anh-ops/anh-ops` which exists as both `anh-ops/SKILL.md` and `anh-ops/anh-ops/SKILL.md`). Added `category` field to each entry for frontend filtering.
+
+Result: Skills panel now shows 111 skills instead of 20.
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID fresh, ~2min uptime)
+- Git committed: `daa4867` ✅
+- All 11 API endpoints verified ✅
+- Skills catalog: 111 skills ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+4. **Skills panel filter** — Skills panel has filter input but no live category filter (dropdown by category)
+
+---
+
 ## Session Log — 2026-04-28 00:10 UTC
 
 ### Changes Made
