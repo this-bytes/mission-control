@@ -1234,6 +1234,7 @@
       <span class="drag-handle" title="Drag to reorder">&#9776;</span>
       <span class="title">Cron Jobs</span>
       <div class="actions">
+        <button class="sec-btn" onclick="openCronModal()" title="New Cron">+</button>
         <button class="sec-btn" onclick="loadCrons()" title="Refresh">&#8635;</button>
       </div>
     </div>
@@ -1758,8 +1759,8 @@ async function loadSessions() {
     const icon = s.platform === 'discord' ? 'DC' : s.platform === 'telegram' ? 'TG' : 'API';
     const updated = s.updated_at ? s.updated_at.slice(0, 16).replace('T', ' ') : '—';
     const tokens = s.total_tokens ? `${(s.total_tokens/1000).toFixed(1)}k` : '';
-    // When searching, show a content snippet if msg_preview is available
-    const preview = (q && s.msg_preview) ? `<div style="font-size:9px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.msg_preview.slice(0, 120))}</div>` : '';
+    // Always show msg_preview as subtitle (useful context without clicking open)
+    const preview = s.msg_preview ? `<div style="font-size:9px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.msg_preview.slice(0, 120))}</div>` : '';
     return `<div class="session-row" id="sess-${s.session_id}" onclick="toggleSession('${s.session_id}')">
       <div class="session-row-header">
         <span class="sess-platform">${icon}</span>
