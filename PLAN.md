@@ -1703,9 +1703,38 @@ Service healthy: uptime 1h 2min, PID 227557, all endpoints responding ✅
 | **Homelab network (10.87.1.0/24)** | NOT CODE — server has no route to that subnet, not a code bug |
 
 ### Current State
-- Service running on port 8420 via systemd ✅ (PID 227557, ~1h uptime)
-- All API endpoints healthy ✅
-- Git pushed: `fd2cf0c → 399c81b` on `github.com/this-bytes/mission-control` ✅
-- MVP COMPLETE — all 4 layers shipped
+- Service running on port 8420 via systemd ✅ (PID 254513, ~2h uptime)
+- Git committed + pushed: `1a6fb68` ✅
+- Graph: 11 real nodes, 7 clean edges ✅
+- Concept nodes preserved in data for detail panel use ✅
 
-### No Blockers for Core MVP
+### No Blockers
+
+### Next Sprint Candidates
+1. **Graph detail panel** — clicking a node shows detail pane but doesn't list connected edges/nodes yet
+2. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+3. **Panel drag-and-drop reorder** — customize dashboard layout
+4. **Command history localStorage persistence** — persist command history across page reloads
+5. **Live metrics over time** — token usage graphs, uptime history
+
+---
+
+## Session Log — 2026-04-28 09:10 UTC
+
+### Changes Made
+
+**Graph: Filter "concept" Nodes from Render**
+
+Problem: 20 of 31 nodes were `concept` type — conversational garbage like "you've just made up some things", "you were just trying too hard", "ve" (truncated). These are Hermes session-memory artifacts, not real entities. Rendering them made the graph look broken.
+
+Root cause: Hermes stores conversational snippets as entities in `entities` table with no `entity_type`. The type-inference classifier maps them all to `concept` because they don't match infrastructure keywords.
+
+Fix: `loadGraph()` filters `type === 'concept'` nodes out before passing to the Graph renderer. Edges are also filtered to only include those connecting two real nodes. Full data (including concept nodes) is preserved in `_graphData` for the detail panel.
+
+Result: **11 real nodes** (system:1, agent:6, credential:1, task:2, service:1), **7 clean edges**.
+
+### No Blockers
+
+---
+
+## Session Log — 2026-04-28 05:33 UTC
