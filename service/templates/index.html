@@ -2588,17 +2588,50 @@ function connectSSE() {
 $('briefing-regen').addEventListener('click', async () => {
   const content = $('briefing-content');
   const meta = $('briefing-meta');
+  const btn = $('briefing-regen');
+  const originalBtn = btn.textContent;
+  btn.textContent = '...';
+  btn.style.color = 'var(--amber)';
   content.textContent = 'Regenerating...';
   content.style.color = 'var(--amber)';
+
   // Find morning-briefing cron
   const job = _cronJobs.find(j => j.name.includes('morning-briefing') || j.name.includes('briefing'));
-  if (job) {
-    await runCron(job.id, job.name);
-    setTimeout(loadBriefing, 3000);
-  } else {
+  if (!job) {
     content.textContent = 'No morning-briefing cron found';
     content.style.color = 'var(--muted)';
+    btn.textContent = originalBtn;
+    btn.style.color = '';
+    return;
   }
+
+  await runCron(job.id, job.name);
+
+  // Poll for new briefing, up to 60s
+  let waited = 0;
+  const poll = setInterval(async () => {
+    waited += 3;
+    const remaining = 60 - waited;
+    if (remaining > 0) {
+      content.textContent = `Regenerating... ${remaining}s`;
+    }
+    const d = await api('/api/briefing');
+    const newB = d && d.ok && d.data && d.data.morning_briefing;
+    // Accept if briefing is newer than when we clicked OR if we've waited 15s+ (cron fires at its own pace)
+    if (newB || waited >= 15) {
+      clearInterval(poll);
+      btn.textContent = originalBtn;
+      btn.style.color = '';
+      await loadBriefing();
+    }
+    if (waited >= 60) {
+      clearInterval(poll);
+      content.textContent = 'Timed out — check Hermes logs';
+      content.style.color = 'var(--red)';
+      btn.textContent = originalBtn;
+      btn.style.color = '';
+    }
+  }, 3000);
 });
 
 /* ══════════════════════════════════════════════════════════════
