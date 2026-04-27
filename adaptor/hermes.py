@@ -301,31 +301,34 @@ class HermesAdaptor:
         result.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
         return result[:10]  # top 10 recent
 
-    async def get_session_messages(self, session_id: str, limit: int = 8) -> list[dict]:
+    async def get_session_messages(self, session_id: str, limit: int = 8, offset: int = 0) -> dict:
         """
-        Return the most recent 'limit' messages from a session file.
+        Return 'limit' messages from a session file starting at 'offset'.
+        Returns: {messages: [...], total: int}
         Each message: {role, content, timestamp}
         """
         session_file = self._hermes_home / "sessions" / f"session_{session_id}.json"
         if not session_file.exists():
-            return []
+            return {"messages": [], "total": 0}
 
         try:
             with session_file.open() as f:
                 data = json.load(f)
             messages = data.get("messages", [])
-            # Take the last 'limit' messages, strip long content
+            total = len(messages)
+            # Slice from offset
+            slice_ = messages[offset:offset + limit]
             recent = []
-            for m in messages[-limit:]:
+            for m in slice_:
                 content = m.get("content", "")
                 recent.append({
                     "role": m.get("role", "?"),
                     "content": content[:500] + ("..." if len(content) > 500 else ""),
                     "timestamp": m.get("timestamp", ""),
                 })
-            return recent
+            return {"messages": recent, "total": total, "offset": offset, "limit": limit}
         except Exception:
-            return []
+            return {"messages": [], "total": 0}
 
     async def get_briefing(self) -> dict:
         """

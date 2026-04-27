@@ -1019,6 +1019,7 @@
       <div id="cmd-input-wrap">
         <span id="cmd-prompt-label">&gt;</span>
         <input id="cmd-input" type="text" placeholder="Ask Hermes, or type /help for commands..." autocomplete="off" />
+        <span id="cmd-skill-hint" style="color:var(--cyan);font-size:10px;margin-left:8px;white-space:nowrap;display:none;"></span>
       </div>
     </div>
     <!-- Events -->
@@ -1424,11 +1425,15 @@ async function loadSessions() {
   }).join('');
 }
 
+// Session pagination state — tracks page offset per session_id
+const _sessionPage = {};
+
 async function toggleSession(sessionId) {
   const row = $('sess-' + sessionId);
   const msgDiv = $('sess-msgs-' + sessionId);
   if (!row || !msgDiv) return;
 
+  // ── Close ──────────────────────────────────────────────────────
   if (_openSession === sessionId) {
     msgDiv.style.display = 'none';
     row.classList.remove('open');
@@ -1436,7 +1441,7 @@ async function toggleSession(sessionId) {
     return;
   }
 
-  // Close previous
+  // ── Switch to new session ──────────────────────────────────────
   if (_openSession) {
     const prev = $('sess-' + _openSession);
     const prevDiv = $('sess-msgs-' + _openSession);
@@ -1448,20 +1453,69 @@ async function toggleSession(sessionId) {
   msgDiv.style.display = 'block';
   msgDiv.innerHTML = '<div style="padding:4px 0;font-size:9px;color:var(--muted)">Loading...</div>';
   _openSession = sessionId;
+  _sessionPage[sessionId] = 0; // reset to first page
 
-  const d = await api(`/api/sessions/${sessionId}/messages?limit=8`);
-  if (!d.ok || !d.data || d.data.length === 0) {
-    msgDiv.innerHTML = '<div style="padding:4px 0;font-size:9px;color:var(--muted)">No messages</div>'; return;
+  await loadSessionPage(sessionId);
+}
+
+async function loadSessionPage(sessionId) {
+  const msgDiv = $('sess-msgs-' + sessionId);
+  if (!msgDiv) return;
+  const offset = _sessionPage[sessionId] || 0;
+  const limit = 8;
+
+  const d = await api(`/api/sessions/${sessionId}/messages?limit=${limit}&offset=${offset}`);
+  if (!d.ok || !d.messages || d.messages.length === 0) {
+    msgDiv.innerHTML = '<div style="padding:4px 0;font-size:9px;color:var(--muted)">No messages</div>';
+    return;
   }
-  msgDiv.innerHTML = d.data.slice(0, 6).map(m => {
+
+  // Remove existing message items (but NOT the load-more button)
+  const existing = msgDiv.querySelectorAll('.msg-item');
+  existing.forEach(el => el.remove());
+
+  // Render each message
+  const frag = document.createDocumentFragment();
+  d.messages.forEach(m => {
     const roleColor = m.role === 'user' ? 'user' : m.role === 'assistant' ? 'assistant' : 'tool';
     const ts = m.timestamp ? new Date(m.timestamp * 1000).toISOString().slice(11, 16) : '';
     const content = m.content ? esc(m.content).replace(/\n/g, '<br>') : '<em style="color:var(--muted)">(empty)</em>';
-    return `<div class="msg-item">
-      <div class="msg-role ${roleColor}">${esc(m.role)} ${ts ? '· ' + ts : ''}</div>
-      <div class="msg-content">${content}</div>
-    </div>`;
-  }).join('');
+    const div = document.createElement('div');
+    div.className = 'msg-item';
+    div.innerHTML = `<div class="msg-role ${roleColor}">${esc(m.role)} ${ts ? '· ' + ts : ''}</div><div class="msg-content">${content}</div>`;
+    frag.appendChild(div);
+  });
+  msgDiv.insertBefore(frag, msgDiv.querySelector('.load-more-btn'));
+
+  // ── Load-more button ─────────────────────────────────────────
+  const existingBtn = msgDiv.querySelector('.load-more-btn');
+  const shown = offset + d.messages.length;
+  if (existingBtn) existingBtn.remove();
+
+  if (shown < d.total) {
+    const btn = document.createElement('button');
+    btn.className = 'load-more-btn';
+    btn.style.cssText = 'background:none;border:1px solid var(--border2);color:var(--cyan);cursor:pointer;font-family:var(--font);font-size:9px;padding:3px 8px;margin-top:4px;border-radius:2px;';
+    btn.textContent = `Load ${Math.min(limit, d.total - shown)} more (${d.total - shown} remaining)`;
+    btn.onclick = async () => {
+      btn.textContent = '…';
+      _sessionPage[sessionId] = shown;
+      await loadSessionPage(sessionId);
+    };
+    msgDiv.appendChild(btn);
+  } else if (d.total > limit) {
+    // All loaded — show a "top" link
+    const top = document.createElement('button');
+    top.className = 'load-more-btn';
+    top.style.cssText = 'background:none;border:none;color:var(--muted);cursor:pointer;font-family:var(--font);font-size:9px;padding:2px 0;margin-top:2px;';
+    top.textContent = `▲ ${d.total} messages loaded`;
+    top.onclick = () => {
+      _sessionPage[sessionId] = 0;
+      msgDiv.innerHTML = '<div style="padding:4px 0;font-size:9px;color:var(--muted)">Loading...</div>';
+      loadSessionPage(sessionId);
+    };
+    msgDiv.appendChild(top);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1663,6 +1717,7 @@ $('cmd-input').addEventListener('keydown', async e => {
 
   const input = $('cmd-input');
   const text = input.value.trim();
+  hideSkillHint();
   if (!text) return;
 
   // Save history
@@ -2143,7 +2198,20 @@ function filterSkills() {
 function invokeSkill(name) {
   $('cmd-input').value = '!' + name;
   $('cmd-input').focus();
+  showSkillHint(name);
   switchTab('graph');
+}
+
+function showSkillHint(name) {
+  const hint = $('cmd-skill-hint');
+  if (!hint) return;
+  hint.textContent = `Press Enter to invoke !${name}`;
+  hint.style.display = 'inline';
+}
+
+function hideSkillHint() {
+  const hint = $('cmd-skill-hint');
+  if (hint) hint.style.display = 'none';
 }
 
 /* ══════════════════════════════════════════════════════════════

@@ -217,11 +217,13 @@ async def get_briefing():
 
 
 @app.get("/api/sessions/{session_id}/messages")
-async def get_session_messages(session_id: str, limit: int = 8):
-    """Recent messages from a specific session — click to expand a session."""
+async def get_session_messages(session_id: str, limit: int = 8, offset: int = 0):
+    """Recent messages from a specific session — click to expand a session.
+    Supports pagination: ?limit=N&offset=M (offset pages through from start).
+    """
     try:
-        msgs = await hermes.get_session_messages(session_id, limit=min(limit, 20))
-        return {"ok": True, "data": msgs, "session_id": session_id}
+        result = await hermes.get_session_messages(session_id, limit=min(limit, 20), offset=offset)
+        return {"ok": True, **result, "session_id": session_id}
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
