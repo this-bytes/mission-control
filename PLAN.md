@@ -195,6 +195,35 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 13:45 UTC
+
+### Changes Made
+
+**Knowledge Graph UX Improvements (NEW)**
+
+1. **Hover tooltip** — floating label appears near cursor on node hover showing entity name + type. Cyan border, dark background, JetBrains Mono font.
+
+2. **Focus dimming** — click a node to enter "focus mode": directly-connected nodes stay bright, all other nodes dim to near-invisible (5% opacity). Edges to the focused node highlight at 2px. Click again or double-click to exit focus mode.
+
+3. **Node sizing by degree** — nodes with more connections render slightly larger (radius 5–9 based on edge count). More central entities are visually larger.
+
+4. **Double-click to reset** — double-click anywhere on the canvas to exit focus mode and let the graph re-settle.
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 143339, ~1h6min uptime)
+- Git committed + pushed: `119cdaf` ✅
+- All API endpoints healthy ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Morning briefing quality** — content correct; formatting already improved
+4. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+
+---
+
 ## Session Log — 2026-04-27 11:30 UTC
 
 ### Changes Made
