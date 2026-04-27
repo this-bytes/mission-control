@@ -908,7 +908,6 @@ class HermesAdaptor:
             resp.raise_for_status()
             if stream:
                 # Use aiter_bytes() + manual decoding to avoid httpx's aiter_lines()
-                # buffering issue (it chunks reads, which can split SSE \n\n delimiters).
                 return self._stream_lines(resp)
             return resp.json()
 
@@ -921,7 +920,7 @@ class HermesAdaptor:
         Each event line starts with "data: ". The final event is "data: [DONE]".
         """
         buffer = b""
-        async for chunk in response.aiter_bytes(chunk_size=128):
+        async for chunk in response.aiter_bytes(chunk_size=512):
             buffer += chunk
             while b"\n" in buffer:
                 line, buffer = buffer.split(b"\n", 1)
