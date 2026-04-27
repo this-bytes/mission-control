@@ -195,6 +195,41 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-28 03:30 UTC
+
+### Root Cause: systemd Crash Loop — Port Not Released Between Kill and Start
+
+**Problem:** Service stuck in `activating (auto-restart)` — `Errno 98: address already in use` cycling every 5s. Port 8420 was never free when the new process tried to bind.
+
+**Root cause (Phase 1):**
+1. `ExecStartPre=/bin/sh -c 'fuser -k 8420/tcp 2>/dev/null; exit 0'` sends SIGKILL to the old process
+2. But `fuser -k` returns immediately — it doesn't wait for the process to exit and release the socket
+3. On this kernel/filesystem combination, orphaned processes take ~1s to fully release port 8420 after SIGKILL
+4. The new `ExecStart` fires before the port is released → `address already in use`
+
+**Fix:** Replaced single-shot kill with a 5-iteration wait loop:
+```
+ExecStartPre=/bin/sh -c 'for i in 1 2 3 4 5; do fuser -k 8420/tcp 2>/dev/null; sleep 1; fuser 8420/tcp 2>/dev/null || exit 0; done; exit 1'
+```
+Now it kills, waits 1s, checks if port is clear, and only proceeds when the port is confirmed free.
+
+**Also fixed:** Service file was gitignored (deployed separately) — fix lives in `/etc/systemd/system/mission-control.service`.
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID fresh, uptime ~1min)
+- All 4 API endpoints verified healthy ✅
+- `ExecStartPre` now exits with status 0/SUCCESS (confirmed port clear before start) ✅
+- `mission-control.service` updated in `/etc/systemd/system/` ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+
+---
+
 ## Session Log — 2026-04-28 02:25 UTC
 
 ### Changes Made
@@ -1535,3 +1570,29 @@ The dashboard was rebuilt from scratch. The previous version was a generic dark 
 3. **Streaming performance** — increase `chunk_size=1` to ~64 for faster token delivery
 4. **Panel drag-and-drop reorder** — bring back the drag-and-drop from the old version
 5. **Live metrics over time** — token usage graphs, uptime history
+
+---
+
+## Session Log — 2026-04-28 05:33 UTC
+
+### No Changes — Push-Only Session
+
+Pushed 1 commit to origin/master: `399c81b` (session log: skills category dropdown filter).
+
+Service healthy: uptime 1h 2min, PID 227557, all endpoints responding ✅
+
+### Blockers
+
+| Blocker | Status | Need from Aaron |
+|---------|--------|----------------|
+| **GitHub PR workflow** | ACTIVE | `GH_TOKEN` env var or credentials in `~/.hermes/auth.json` for `github` platform |
+| **Memory graph type coloring** | NOT CODE — Hermes entity store is sparse (all "unknown" type), not a code bug |
+| **Homelab network (10.87.1.0/24)** | NOT CODE — server has no route to that subnet, not a code bug |
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 227557, ~1h uptime)
+- All API endpoints healthy ✅
+- Git pushed: `fd2cf0c → 399c81b` on `github.com/this-bytes/mission-control` ✅
+- MVP COMPLETE — all 4 layers shipped
+
+### No Blockers for Core MVP
