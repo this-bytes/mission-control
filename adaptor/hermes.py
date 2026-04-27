@@ -1044,8 +1044,11 @@ class HermesAdaptor:
                     node["type"] = _infer_type(node["name"])
                 type_counts[node["type"]] = type_counts.get(node["type"], 0) + 1
 
-            # Edges: facts link entity pairs
-            # Each fact may reference multiple entities — build edge per pair
+            # ── Edges: two sources ───────────────────────────────────────────────
+            # Source 1: facts with multiple entities (Hermes's native memory store)
+            # Source 2: co-occurrence in conversation sessions (supplements sparse facts)
+
+            # Source 1: fact-based edges
             cur.execute("""
                 SELECT fe.fact_id, fe.entity_id, e.name, f.content, f.category
                 FROM fact_entities fe
@@ -1055,7 +1058,6 @@ class HermesAdaptor:
             """)
             rows = cur.fetchall()
 
-            # Group by fact_id to find entity pairs within each fact
             from collections import defaultdict
             fact_to_entities = defaultdict(list)
             fact_meta = {}
@@ -1067,7 +1069,6 @@ class HermesAdaptor:
             edges = []
             for fact_id, entities in fact_to_entities.items():
                 if len(entities) >= 2:
-                    # Connect consecutive entity pairs in this fact
                     for i in range(len(entities) - 1):
                         src, src_name = entities[i]
                         dst, dst_name = entities[i + 1]
@@ -1079,7 +1080,6 @@ class HermesAdaptor:
                             "fact_preview": content_preview,
                         })
                 elif len(entities) == 1:
-                    # Single entity self-link (for orphan facts)
                     src, src_name = entities[0]
                     content_preview, category = fact_meta.get(fact_id, ("", ""))
                     edges.append({
@@ -1088,6 +1088,69 @@ class HermesAdaptor:
                         "label": category or "mentioned",
                         "fact_preview": content_preview,
                     })
+
+            # Source 2: co-occurrence edges from session conversations
+            # Entities mentioned together in the same message are semantically related.
+            # Filter entities to quality names: starts uppercase, 3-50 chars, not garbage.
+            entity_id_to_name = {str(eid): name for eid, name in cur.execute("SELECT entity_id, name FROM entities")}
+            blocklist = {'anh', 'credential', 'credentials', 'pretty weak', '## active task'}
+            garbage_patterns = ['you tell me what', 'what you can do', 's Arnold',
+                                 'm playing it safe', 's operational', 've just made up',
+                                 'these are all weak', 's domain exclusively', 's a few categories',
+                                 's profile', "t, if the channel"]
+            quality_entities = {}
+            for eid, name in entity_id_to_name.items():
+                nl = name.lower().strip()
+                if nl in blocklist:
+                    continue
+                if any(p in nl for p in garbage_patterns):
+                    continue
+                if name[0].isupper() and 3 <= len(name) <= 50:
+                    quality_entities[eid] = name
+
+            # Build name→id and name→entity_id lookups for co-occurrence
+            name_to_eid = {name: eid for eid, name in quality_entities.items()}
+            import re as _re
+            entity_patterns = [
+                (_re.compile(r'\b' + _re.escape(name) + r'\b', _re.IGNORECASE), name)
+                for name in quality_entities.values()
+            ]
+
+            sessions_dir = self._hermes_home / "sessions"
+            cooccur: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+
+            # Limit to 50 most recently modified sessions to avoid slow reads
+            session_files = sorted(sessions_dir.glob("**/*.json"), key=lambda f: f.stat().st_mtime, reverse=True)[:50]
+
+            for sf in session_files:
+                try:
+                    sess = json.loads(sf.read_text())
+                    for msg in sess.get("messages", []):
+                        content = str(msg.get("content", "") or "")
+                        mentioned = set()
+                        for pat, name in entity_patterns:
+                            if pat.search(content):
+                                mentioned.add(name)
+                        for e1 in sorted(mentioned):
+                            for e2 in sorted(mentioned):
+                                if e1 < e2:
+                                    cooccur[e1][e2] += 1
+                except Exception:
+                    pass
+
+            # Add co-occurrence edges with strength-weighted labels
+            for e1_name, others in cooccur.items():
+                for e2_name, count in others.items():
+                    if e1_name < e2_name and count >= 2:
+                        e1_id = name_to_eid.get(e1_name)
+                        e2_id = name_to_eid.get(e2_name)
+                        if e1_id and e2_id:
+                            edges.append({
+                                "source": e1_id,
+                                "target": e2_id,
+                                "label": "session_cooccur",
+                                "fact_preview": f"mentioned together ×{count}",
+                            })
 
             conn.close()
             return {
