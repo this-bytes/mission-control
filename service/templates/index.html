@@ -2672,13 +2672,21 @@ async function loadGraph() {
   const { nodes, edges } = d.data;
   if (!nodes || !nodes.length) return;
 
-  // Restore positions
-  for (const n of nodes) {
+  // Store full data for detail panel (all nodes including concept)
+  _graphData = d.data;
+
+  // Filter concept nodes from render — they're conversational garbage with no semantic value
+  const realNodeIds = new Set(nodes.filter(n => n.type !== 'concept').map(n => n.id));
+  const renderNodes = nodes.filter(n => n.type !== 'concept');
+  const renderEdges = edges.filter(e => realNodeIds.has(e.source) && realNodeIds.has(e.target));
+
+  // Restore positions (only for real nodes)
+  for (const n of renderNodes) {
     if (_nodePositions[n.id]) { n._x = _nodePositions[n.id].x; n._y = _nodePositions[n.id].y; }
   }
 
-  _graphData = d.data;
-  _graph = new Graph(nodes, edges);
+  if (!renderNodes.length) return;
+  _graph = new Graph(renderNodes, renderEdges);
   resizeCanvas();
   animateGraph();
 }
