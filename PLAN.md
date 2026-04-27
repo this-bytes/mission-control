@@ -195,6 +195,40 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 23:00 UTC
+
+### Changes Made
+
+**1. Streaming Performance — chunk_size 128→512 (perf)**
+
+`adaptor/hermes.py` `_stream_lines()`: `aiter_bytes(chunk_size=128)` → `chunk_size=512`.
+Each network read now delivers 4x more data per iteration, reducing the number of buffer-assembly cycles needed for SSE event delivery. No changes to SSE parsing logic.
+
+**2. Committed Pending Fixes from Prior Session**
+
+- `adaptor/hermes.py`: Hermes CLI cron commands renamed (`cron update` → `cron edit`, `cron delete` → `cron remove`, schedule/prompt as positional args)
+- `service/templates/index.html`: closed missing `}` on Graph class
+- `PLAN.md`: prior session log entry
+
+**3. Service Restart**
+
+Service restarted cleanly after the adaptor change. All endpoints healthy.
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 199193, fresh restart)
+- Git committed: `a38b922` ✅
+- All API endpoints healthy ✅
+- Streaming chunk_size now 512 ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+
+---
+
 ## Session Log — 2026-04-27 21:56 UTC
 
 ### Changes Made
