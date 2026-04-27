@@ -172,11 +172,11 @@ class HermesAdaptor:
         skills = skills or []
         cmd = ["cron", "create",
                "--name", name,
-               "--schedule", schedule,
-               "--deliver", deliver,
-               "--prompt", prompt]
+               "--deliver", deliver]
         for s in skills:
             cmd += ["--skill", s]
+        # schedule and prompt are positional arguments
+        cmd += [schedule, prompt]
         result = self._run_hermes(cmd, timeout=30)
         if result.returncode != 0:
             raise RuntimeError(f"Cron create failed: {result.stderr.strip()}")
@@ -201,7 +201,7 @@ class HermesAdaptor:
         Update an existing cron job via hermes CLI.
         At least one field must be provided.
         """
-        cmd = ["cron", "update", job_id]
+        cmd = ["cron", "edit", job_id]
         if enabled is not None:
             cmd += ["--enabled" if enabled else "--disabled"]
         if name is not None:
@@ -221,7 +221,7 @@ class HermesAdaptor:
 
     def delete_cron(self, job_id: str) -> dict:
         """Delete a cron job via hermes CLI."""
-        result = self._run_hermes(["cron", "delete", job_id], timeout=30)
+        result = self._run_hermes(["cron", "remove", job_id], timeout=30)
         if result.returncode != 0:
             raise RuntimeError(f"Cron delete failed: {result.stderr.strip()}")
         return {"ok": True, "job_id": job_id}

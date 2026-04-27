@@ -195,6 +195,36 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 21:56 UTC
+
+### Changes Made
+
+**systemd Service — Orphaned Process Kill on Start (FIX)**
+
+Problem: Port 8420 conflict crash loop — `address already in use` errors cycling every 5 seconds with restart counter climbing past 620. Orphaned Python process from a previous session was holding the port.
+
+Root cause: `run.py` was manually started outside of systemd in a prior debug session. When systemd tried to restart the service it couldn't acquire the port.
+
+Fix: Added `ExecStartPre=/bin/sh -c 'fuser -k 8420/tcp 2>/dev/null; exit 0'` to the service file. This runs before every start attempt and kills any process holding port 8420. Service now starts cleanly regardless of orphaned processes.
+
+Note: `mission-control.service` is gitignored (deployed separately from repo). This fix only applies to the deployed service.
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 187846, ~5min uptime)
+- All 6 API endpoints verified healthy ✅
+- Service restart counter reset to 0 ✅
+- Git working tree clean (service file not in git) ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Streaming performance** — chunk_size=128, could try 256 or 512 for faster token delivery
+4. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+
+---
+
 ## Session Log — 2026-04-27 20:45 UTC
 
 ### Changes Made
