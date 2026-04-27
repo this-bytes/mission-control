@@ -793,6 +793,33 @@
       color: var(--muted);
     }
 
+    /* ── Quick Links ──────────────────────────────────────────── */
+    #links-body { padding: 10px 12px; }
+    .links-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .link-card {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 10px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .link-card:hover { border-color: var(--cyan); background: var(--surface3); }
+    .link-card-name { font-size: 11px; font-weight: 600; color: var(--text); }
+    .link-card-desc { font-size: 9px; color: var(--muted); }
+    .link-card-status { font-size: 9px; margin-top: 2px; }
+    .link-card-status.up { color: var(--green); }
+    .link-card-status.down { color: var(--red); }
+    .link-card-status.unknown { color: var(--muted); }
+
     /* ── Command Palette ────────────────────────────────────── */
     #palette-overlay {
       position: fixed; inset: 0;
@@ -1065,6 +1092,7 @@
       <button class="tab" id="tab-skills" onclick="switchTab('skills')">Skills</button>
       <button class="tab" id="tab-metrics" onclick="switchTab('metrics')">Metrics</button>
       <button class="tab" id="tab-system" onclick="switchTab('system')">Server</button>
+      <button class="tab" id="tab-links" onclick="switchTab('links')">Links</button>
     </div>
 
     <!-- Graph -->
@@ -1200,6 +1228,13 @@
           <span class="srv-meta-label">MEM</span>
           <span id="s-mem-gb">—</span>
         </div>
+      </div>
+    </div>
+
+    <!-- Links -->
+    <div class="tab-panel" id="panel-links">
+      <div id="links-body">
+        <div class="links-grid" id="links-grid"></div>
       </div>
     </div>
 
@@ -1384,6 +1419,7 @@ function switchTab(name) {
   $(`tab-${name}`).classList.add('active');
   $(`panel-${name}`).classList.add('active');
   if (name === 'graph') resizeCanvas();
+  if (name === 'links') loadLinks();
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2518,6 +2554,54 @@ async function loadSystemInfo() {
 
   // Mem GB
   $('s-mem-gb').textContent = `${s.memory_used_gb || '?'} / ${s.memory_total_gb || '?'} GB`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   QUICK LINKS
+══════════════════════════════════════════════════════════════ */
+const _linksState = { links: null };
+
+const QUICK_LINKS = [
+  { name: 'GitHub', desc: 'this-bytes/mission-control', url: 'https://github.com/this-bytes/mission-control', checkUrl: 'https://github.com/', checkHost: 'github.com', checkPort: 443 },
+  { name: 'GitHub PRs', desc: 'Pull requests queue', url: 'https://github.com/pulls', checkUrl: 'https://github.com/', checkHost: 'github.com', checkPort: 443 },
+  { name: 'Google WS', desc: 'Workspace admin', url: 'https://workspace.google.com', checkUrl: 'https://workspace.google.com/', checkHost: 'workspace.google.com', checkPort: 443 },
+  { name: 'Paperclip', desc: 'Issue tracker / goals', url: 'http://10.87.1.201:3100', checkUrl: 'http://10.87.1.201:3100/api/health', checkHost: '10.87.1.201', checkPort: 3100 },
+  { name: 'Homelab', desc: '10.87.1.1 gateway', url: 'http://10.87.1.1', checkUrl: 'http://10.87.1.1/', checkHost: '10.87.1.1', checkPort: 443 },
+  { name: 'Hermes API', desc: 'Gateway on :8642', url: 'http://localhost:8642', checkUrl: 'http://localhost:8642/health/detailed', checkHost: 'localhost', checkPort: 8642 },
+];
+
+async function loadLinks() {
+  const grid = $('links-grid');
+  if (!grid) return;
+
+  // One-time render of static structure
+  if (!_linksState.links) {
+    grid.innerHTML = QUICK_LINKS.map((l, i) => `
+      <a class="link-card" id="link-card-${i}" href="${l.url}" target="_blank" rel="noopener">
+        <span class="link-card-name">${l.name}</span>
+        <span class="link-card-desc">${l.desc}</span>
+        <span class="link-card-status unknown" id="link-status-${i}">Checking...</span>
+      </a>
+    `).join('');
+    _linksState.links = true;
+
+    // Async connectivity checks (non-blocking)
+    QUICK_LINKS.forEach(async (l, i) => {
+      const el = $('link-status-' + i);
+      if (!el) return;
+      try {
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 2000);
+        const r = await fetch(l.checkUrl, { method: 'HEAD', signal: controller.signal });
+        clearTimeout(t);
+        el.textContent = 'UP';
+        el.className = 'link-card-status up';
+      } catch {
+        el.textContent = 'DOWN';
+        el.className = 'link-card-status down';
+      }
+    });
+  }
 }
 
 function renderEvents() {
