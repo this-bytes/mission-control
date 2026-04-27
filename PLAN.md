@@ -195,6 +195,44 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-28 07:00 UTC
+
+### Changes Made
+
+**Graph: Add Session Co-occurrence Edges (NEW) + Performance Fix**
+
+Problem: Graph had 27 nodes but only 1 edge — Hermes's memory_store.db stores almost no entity-facts (25/27 entities have zero fact associations). Clicking a node showed "0 connections" because there was nothing to show.
+
+Root cause (Phase 1): Hermes stores entities in `entities` table but almost never links them via `fact_entities`. The `fact_entities` table had only 2 rows total (one fact about Discord channel IDs linking two entities). Without facts linking entities, the graph has no edges.
+
+Fix — 2-part:
+
+1. **Co-occurrence edges from sessions** (`adaptor/hermes.py` `get_knowledge_graph()`): Added a second edge source. Entities mentioned together in the same conversation message are semantically related — e.g., "Home Assistant" and "Mission Control" appearing together in a cron job prompt means they're connected. Added:
+   - Quality entity filter: starts with uppercase, 3-50 chars, blocklist of conversational garbage
+   - Session co-occurrence scanner: reads up to 50 most-recently-modified sessions, finds entity name mentions per message, builds co-occurrence counts
+   - Edges added with `label: "session_cooccur"` and `fact_preview: "mentioned together ×N"`
+
+2. **Performance fix**: Changed `sessions.glob("**/*.json")` (all 653 files) to `sorted(...)[:50]` — 50 most recent sessions only. This cut graph load from timeout (30s+) to ~0.8s.
+
+Result: **46 edges** (was 1). All quality entities now have connections.
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 254343, ~5min uptime)
+- Git committed + pushed: `674e219` ✅
+- All 9 API endpoints verified healthy ✅
+- Graph: 27 nodes, **46 edges** (was 1) ✅
+- Graph detail panel now shows connections for each node ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph** — 18/27 nodes still "concept" type (conversational memory not entity); Hermes would need to populate entity_type
+3. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+4. **Graph: entity names** — 18/27 nodes are garbage conversational snippets (e.g. "you've just made up some things"); could filter these from the graph display entirely
+
+---
+
 ## Session Log — 2026-04-28 03:30 UTC
 
 ### Root Cause: systemd Crash Loop — Port Not Released Between Kill and Start
