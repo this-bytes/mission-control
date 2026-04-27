@@ -156,20 +156,469 @@ class HermesAdaptor:
 
     async def trigger_cron_run(self, job_id: str) -> dict:
         """Trigger an immediate cron job run via the hermes CLI."""
-        # Find the venv python in HERMES_HOME
-        venv_python = self._hermes_home / "hermes-agent" / "venv" / "bin" / "python"
-        if not venv_python.exists():
-            # Try system python
-            venv_python = self._hermes_home / "bin" / "python"
-        result = subprocess.run(
-            [str(venv_python), "-m", "hermes_cli.main", "cron", "run", job_id],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
+        result = self._run_hermes(["cron", "run", job_id], timeout=30)
         if result.returncode != 0:
             raise RuntimeError(f"Cron run failed: {result.stderr.strip()}")
         return {"ok": True, "job_id": job_id, "output": result.stdout.strip()}
+
+    # ── Cron CRUD ─────────────────────────────────────────────────────────────
+
+    def create_cron(self, name: str, prompt: str, schedule: str,
+                    skills: list[str] = None, deliver: str = "origin") -> dict:
+        """
+        Create a new cron job via hermes CLI.
+        Returns {ok, job_id, name} or raises RuntimeError.
+        """
+        skills = skills or []
+        cmd = ["cron", "create",
+               "--name", name,
+               "--schedule", schedule,
+               "--deliver", deliver,
+               "--prompt", prompt]
+        for s in skills:
+            cmd += ["--skill", s]
+        result = self._run_hermes(cmd, timeout=30)
+        if result.returncode != 0:
+            raise RuntimeError(f"Cron create failed: {result.stderr.strip()}")
+        # Parse job ID from output: "Created cron job: ID NAME"
+        output = result.stdout.strip()
+        job_id = ""
+        for line in output.splitlines():
+            line = line.strip()
+            # Look for a hex ID like "abc123def..."
+            import re
+            m = re.search(r'\b([0-9a-f]{10,})\b', line)
+            if m:
+                job_id = m.group(1)
+                break
+        return {"ok": True, "job_id": job_id, "name": name, "output": output}
+
+    def update_cron(self, job_id: str, enabled: bool = None,
+                    name: str = None, schedule: str = None,
+                    prompt: str = None, deliver: str = None,
+                    skills: list[str] = None) -> dict:
+        """
+        Update an existing cron job via hermes CLI.
+        At least one field must be provided.
+        """
+        cmd = ["cron", "update", job_id]
+        if enabled is not None:
+            cmd += ["--enabled" if enabled else "--disabled"]
+        if name is not None:
+            cmd += ["--name", name]
+        if schedule is not None:
+            cmd += ["--schedule", schedule]
+        if prompt is not None:
+            cmd += ["--prompt", prompt]
+        if deliver is not None:
+            cmd += ["--deliver", deliver]
+        if skills is not None:
+            cmd += ["--skills", ",".join(skills)]
+        result = self._run_hermes(cmd, timeout=30)
+        if result.returncode != 0:
+            raise RuntimeError(f"Cron update failed: {result.stderr.strip()}")
+        return {"ok": True, "job_id": job_id, "output": result.stdout.strip()}
+
+    def delete_cron(self, job_id: str) -> dict:
+        """Delete a cron job via hermes CLI."""
+        result = self._run_hermes(["cron", "delete", job_id], timeout=30)
+        if result.returncode != 0:
+            raise RuntimeError(f"Cron delete failed: {result.stderr.strip()}")
+        return {"ok": True, "job_id": job_id}
+
+    def _run_hermes(self, args: list[str], timeout: int = 30) -> subprocess.CompletedProcess:
+        """Run a hermes CLI command and return the result."""
+        # Find hermes binary
+        hermes_bin = self._find_hermes_bin()
+        return subprocess.run(
+            [hermes_bin] + args,
+            capture_output=True, text=True, timeout=timeout,
+            env={**subprocess.os.environ, "HERMES_HOME": str(self._hermes_home)}
+        )
+
+    def _find_hermes_bin(self) -> str:
+        """Locate the hermes binary."""
+        candidates = [
+            self._hermes_home / "bin" / "hermes",
+            Path("/usr/local/bin/hermes"),
+            Path.home() / ".local" / "bin" / "hermes",
+            Path("/usr/bin/hermes"),
+        ]
+        for c in candidates:
+            if c.exists():
+                return str(c)
+        # Fallback: trust it's on PATH
+        return "hermes"
+
+    # ── Cron Intelligence ─────────────────────────────────────────────────────
+    # Gap analysis, coverage scoring, topology mapping, recommendations.
+    # Adapted from gap-finder-cron-evolver.py logic but returns structured data.
+
+    # Category schema: what good ops coverage looks like (fitness excluded — Arnold's domain)
+    CATEGORY_SCHEMAS = {
+        "ops": {
+            "description": "Homelab / infrastructure monitoring",
+            "required_slots": [
+                ("morning_health",      "weekday_morning",    "0 5,6 * * 1-5"),
+                ("midday_health",       "any_midday",          "0 14,15 * * *"),
+                ("evening_health",       "evening",             "0 20,21 * * *"),
+                ("weekend_health",       "weekend_morning",     "0 9,10 * * 0,6"),
+            ],
+        },
+        "memory": {
+            "description": "Memory, context, and wiki maintenance",
+            "required_slots": [
+                ("context_maintenance", "regular_interval",  "0 */4 * * *"),
+                ("conversation_arch",   "three_times_daily", "0 6,14,22 * * *"),
+                ("memory_absorber",     "regular_interval",  "0 */3 * * *"),
+                ("wiki_archaeology",    "weekly",            "0 10 * * 0"),
+            ],
+        },
+        "creative": {
+            "description": "Creative inspiration, blog, and learning",
+            "required_slots": [
+                ("daily_surprise",    "daily_morning",     "0 9 * * *"),
+                ("blog_pipeline",     "evening",           "0 20 * * *"),
+                ("weekly_project",    "friday_afternoon",   "0 15 * * 5"),
+            ],
+        },
+        "self_improvement": {
+            "description": "Maxi's own capability improvement",
+            "required_slots": [
+                ("iterate_pulse",          "regular",      "0 */4 * * *"),
+                ("mission_control_iter",   "hourly",       "every 60m"),
+                ("proactive_discovery",    "six_hour",     "0 */6 * * *"),
+                ("skill_health",            "three_times_daily", "0 8,12,18 * * *"),
+                ("gap_finder",              "daily",        "0 7 * * *"),
+            ],
+        },
+        "paperclip": {
+            "description": "Paperclip AI company agent orchestration",
+            "required_slots": [
+                ("paperclip_morning_health", "morning", "0 9 * * *"),
+                ("paperclip_evening_health", "evening", "0 21 * * *"),
+            ],
+        },
+        "briefings": {
+            "description": "Aaron's daily briefings",
+            "required_slots": [
+                ("morning_briefing", "morning_early", "0 21 * * *"),
+                ("evening_wrapup",  "late_night",    "0 1 * * *"),
+                ("weekly_pulse",    "monday",        "0 0 * * 1"),
+            ],
+        },
+    }
+
+    def _slot_to_hours(self, slot_expr: str) -> list[int]:
+        """Convert cron expr to list of integer hours."""
+        if slot_expr in ("every 60m", "every 15m"):
+            return list(range(24))
+        parts = slot_expr.split()
+        if len(parts) < 2:
+            return []
+        hour_part = parts[1]
+        hours = []
+        for seg in hour_part.split(","):
+            if "-" in seg:
+                start, end = map(int, seg.split("-"))
+                hours.extend(range(start, end + 1))
+            elif seg == "*":
+                hours.extend(range(24))
+            else:
+                try:
+                    hours.append(int(seg))
+                except ValueError:
+                    pass
+        return sorted(set(hours))
+
+    def _job_matches_slot(self, job: dict, slot_hours: list,
+                          weekdays_required: list[int] = None) -> bool:
+        """Check if a cron job covers a required time slot."""
+        sched = job.get("schedule", "")
+        if sched in ("every 60m", "every 15m", "every 30m"):
+            return True
+        hours = self._slot_to_hours(sched)
+        if not hours or not set(hours) & set(slot_hours):
+            return False
+        if weekdays_required:
+            day_part = sched.split()[3] if len(sched.split()) > 3 else "*"
+            if day_part == "*":
+                return True
+            job_days = set()
+            for seg in day_part.split(","):
+                if "-" in seg:
+                    s, e = map(int, seg.split("-"))
+                    job_days.update(range(s, e + 1))
+                else:
+                    try:
+                        job_days.add(int(seg))
+                    except ValueError:
+                        pass
+            if not job_days & set(weekdays_required):
+                return False
+        return True
+
+    def _infer_category(self, job: dict) -> str:
+        """Infer the operational category of a cron job from its name + prompt."""
+        name = job.get("name", "").lower()
+        prompt = job.get("prompt_preview", "").lower()
+
+        signals = {
+            "ops": ["health", "homelab", "disk", "docker", "server", "uptime", "ping"],
+            "memory": ["memory", "session", "context", "wiki", "fact", "learn"],
+            "creative": ["blog", "creative", "ideation", "surprise", "project"],
+            "self_improvement": ["iterate", "improve", "gap", "skill", "pulse", "mission-control"],
+            "paperclip": ["paperclip", "agent", "ceo", "gilfoyle", "dinesh", "jarvis"],
+            "briefings": ["briefing", "wrapup", "morning", "evening", "weekly", "pulse"],
+        }
+
+        text = f"{name} {prompt}"
+        scores = {}
+        for cat, keywords in signals.items():
+            scores[cat] = sum(1 for kw in keywords if kw in text)
+
+        if max(scores.values()) == 0:
+            return "other"
+        return max(scores, key=scores.get)
+
+    def _infer_edges(self, jobs: list[dict]) -> list[dict]:
+        """
+        Build adjacency edges between crons by analyzing prompt cross-references
+        and temporal firing patterns (crons that fire within 60s of each other).
+        Returns list of {source, target, label, type}.
+        """
+        edges = []
+        name_map = {j["name"].lower(): j["id"] for j in jobs}
+
+        for job in jobs:
+            prompt = job.get("prompt_preview", "").lower()
+            # Look for other cron names mentioned in prompt
+            for other_job in jobs:
+                if other_job["id"] == job["id"]:
+                    continue
+                other_name = other_job["name"].lower()
+                # Skip very short names (too generic)
+                if len(other_name) < 4:
+                    continue
+                if other_name in prompt:
+                    edges.append({
+                        "source": job["id"],
+                        "target": other_job["id"],
+                        "label": "calls",
+                        "type": "explicit",
+                    })
+
+        # Deduplicate
+        seen = set()
+        deduped = []
+        for e in edges:
+            key = (e["source"], e["target"])
+            if key not in seen:
+                seen.add(key)
+                deduped.append(e)
+        return deduped
+
+    def _generate_recommendations(self, jobs: list[dict], gaps: list[dict],
+                                  orphans: list[dict], never_run: list[dict]) -> list[dict]:
+        """Generate actionable recommendations based on analysis."""
+        recs = []
+
+        # HIGH: unfilled critical slots
+        critical_slots = {"morning_health", "midday_health", "evening_health",
+                          "weekend_health", "morning_briefing"}
+        for gap in gaps:
+            if gap["slot_key"] in critical_slots:
+                recs.append({
+                    "priority": "high",
+                    "category": gap["category"],
+                    "slot_key": gap["slot_key"],
+                    "slot_desc": gap["slot_desc"],
+                    "slot_expr": gap["slot_expr"],
+                    "recommendation": f"No coverage for {gap['slot_desc']} ({gap['slot_expr']}).",
+                    "action": "create",
+                    "proposal": self._proposal_for_gap(gap),
+                })
+
+        # MEDIUM: non-critical gaps
+        for gap in gaps:
+            if gap["slot_key"] not in critical_slots:
+                recs.append({
+                    "priority": "medium",
+                    "category": gap["category"],
+                    "slot_key": gap["slot_key"],
+                    "slot_desc": gap["slot_desc"],
+                    "slot_expr": gap["slot_expr"],
+                    "recommendation": f"Missing coverage: {gap['slot_desc']}.",
+                    "action": "create",
+                    "proposal": self._proposal_for_gap(gap),
+                })
+
+        # MEDIUM: orphans
+        for orphan in orphans:
+            recs.append({
+                "priority": "medium",
+                "category": "ops",
+                "slot_key": "orphan",
+                "slot_desc": orphan.get("name", "unnamed"),
+                "slot_expr": orphan.get("schedule", ""),
+                "recommendation": f"Orphaned cron '{orphan.get('name', '')}' has no skills attached — may fire without proper context.",
+                "action": "attach_skills",
+                "job_id": orphan.get("id"),
+            })
+
+        # MEDIUM: never-run
+        for nr in never_run:
+            recs.append({
+                "priority": "medium",
+                "category": "ops",
+                "slot_key": "never_run",
+                "slot_desc": nr.get("name", "unnamed"),
+                "slot_expr": nr.get("schedule", ""),
+                "recommendation": f"'{nr.get('name', '')}' is enabled but has never run — check schedule syntax or trigger it manually.",
+                "action": "inspect",
+                "job_id": nr.get("id"),
+            })
+
+        # LOW: delivery issues
+        for job in jobs:
+            deliver = job.get("deliver", "origin")
+            if deliver == "origin":
+                recs.append({
+                    "priority": "low",
+                    "category": "ops",
+                    "slot_key": "delivery",
+                    "slot_desc": job.get("name", ""),
+                    "slot_expr": "",
+                    "recommendation": f"'{job.get('name', '')}' delivers to 'origin' — consider routing to Telegram for async visibility.",
+                    "action": "update_delivery",
+                    "job_id": job.get("id"),
+                })
+
+        return recs
+
+    def _proposal_for_gap(self, gap: dict) -> dict:
+        """Generate a cron job proposal to fill a gap."""
+        proposals = {
+            "weekend_health":        {"name": "Weekend Morning Health Check", "schedule": "0 10 * * 0,6", "skills": ["anh-ops", "anh-ops-health", "anh-ops-wiki"], "deliver": "telegram:7705898692", "prompt": "Run the weekend morning health check. Load skills: anh-ops, anh-ops-health, anh-ops-wiki. Check homelab services, disk, Docker containers. Deliver a SHORT summary to Telegram — weekend edition."},
+            "evening_health":        {"name": "Evening Ops Report", "schedule": "0 21 * * *", "skills": ["anh-ops", "anh-ops-health", "anh-ops-paperclip"], "deliver": "telegram:7705898692", "prompt": "Run the evening ops summary. Load skills: anh-ops, anh-ops-health, anh-ops-paperclip. Report homelab health, Paperclip agent status, any anomalies. Keep it brief."},
+            "midday_health":         {"name": "Midday Health Check", "schedule": "0 14 * * *", "skills": ["anh-ops", "anh-ops-health"], "deliver": "telegram:7705898692", "prompt": "Run midday health check. Load skills: anh-ops, anh-ops-health. Check homelab services are healthy. Report a one-line status to Telegram."},
+            "memory_absorber":       {"name": "Proactive Memory Absorber", "schedule": "0 */3 * * *", "skills": ["session_search"], "deliver": "origin", "prompt": "You are Maxi. Read the last 2 hours of your session history. Extract new facts about Aaron (preferences, projects, people, habits). Store important facts using the memory tool. Report what you absorbed."},
+            "pending_digest":        {"name": "Pending Items Proactive Digest", "schedule": "0 10 * * *", "skills": ["anh-ops-wiki"], "deliver": "telegram:7705898692", "prompt": "Read /mnt/nas/software/docs/PENDING.md. Find items older than 3 days — flag as stale. Nudge Aaron if any item has been waiting >7 days. Format: brief stale items list with ages."},
+            "paperclip_morning_health": {"name": "Paperclip Morning Health", "schedule": "0 9 * * *", "skills": ["anh-ops-paperclip", "paperclip-api-access"], "deliver": "telegram:7705898692", "prompt": "Check Paperclip agent team health. Use paperclip-api-access skill. Verify all agents are responding. Report any stuck agents to Telegram."},
+            "weekly_project":         {"name": "Weekly Project Exploration", "schedule": "0 15 * * 5", "skills": ["session_search"], "deliver": "telegram:7705898692", "prompt": "You are Maxi. It's Friday afternoon. Review session history from this week — find unresolved ideas, half-finished projects, or creative threads. Present 2-3 actionable follow-ups."},
+            "gap_finder":            {"name": "Gap-Finder & Cron Evolver", "schedule": "0 7 * * *", "skills": [], "deliver": "telegram:7705898692", "prompt": "Run gap-finder-cron-evolver: ~/.hermes/scripts/gap-finder-cron-evolver.py. Analyze all cron jobs, find coverage gaps, orphaned jobs, never-run jobs. Propose and auto-create high-confidence missing jobs."},
+            "context_maintenance":    {"name": "Context Maintenance", "schedule": "0 */4 * * *", "skills": ["session_search"], "deliver": "origin", "prompt": "You are Maxi. Review recent sessions, update entity memory for any new facts about Aaron's projects or preferences. Use the memory tool to store notable findings."},
+            "wiki_archaeology":      {"name": "Wiki Archaeology", "schedule": "0 10 * * 0", "skills": ["anh-ops-wiki"], "deliver": "telegram:7705898692", "prompt": "You are Maxi. Audit the wiki at /mnt/nas/software/docs/. Find outdated pages, broken links, or sections that need expansion. Report findings to Telegram."},
+            "daily_surprise":        {"name": "Daily Creative Surprise", "schedule": "0 9 * * *", "skills": ["session_search"], "deliver": "telegram:7705898692", "prompt": "You are Maxi. Review recent sessions and facts. Find one specific, cool idea relevant to Aaron's current projects — something novel, not generic. Share it on Telegram."},
+            "blog_pipeline":          {"name": "Blog Pipeline", "schedule": "0 20 * * *", "skills": ["session_search"], "deliver": "telegram:7705898692", "prompt": "You are Maxi. Run the blog pipeline. Find any half-written posts or new ideas in session history. Advance the most promising one. Report progress to Telegram."},
+        }
+        key = gap.get("slot_key", "")
+        # Try exact match then partial
+        if key in proposals:
+            return proposals[key]
+        for prefix in ("morning_", "midday_", "evening_", "weekend_"):
+            if key.startswith(prefix) and prefix + "health" in proposals:
+                return proposals[prefix + "health"]
+        return {"name": f"Suggested: {gap['slot_key']}", "schedule": gap.get("slot_expr", "0 9 * * *"), "skills": [], "deliver": "telegram:7705898692", "prompt": f"Fill gap: {gap.get('slot_desc', gap['slot_key'])}"}
+
+    async def get_cron_intel(self) -> dict:
+        """
+        Full cron intelligence: jobs, gaps, coverage, topology, recommendations.
+        Combines gap-finder analysis with Mission Control's own topology mapping.
+        """
+        jobs = await self.get_cron_jobs()
+        jobs_data = [j.__dict__ for j in jobs]
+
+        # ── Gap Analysis ───────────────────────────────────────────────────────
+        gaps = []
+        for cat, schema in self.CATEGORY_SCHEMAS.items():
+            for slot_key, slot_desc, slot_expr in schema["required_slots"]:
+                slot_hours = self._slot_to_hours(slot_expr)
+                weekdays_required = None
+                if "1-5" in slot_expr:
+                    weekdays_required = [1, 2, 3, 4, 5]
+                elif "0,6" in slot_expr:
+                    weekdays_required = [0, 6]
+
+                covered = any(
+                    self._job_matches_slot(j, slot_hours, weekdays_required)
+                    for j in jobs_data
+                    if j.get("enabled", False)
+                )
+                if not covered:
+                    gaps.append({
+                        "category": cat,
+                        "slot_key": slot_key,
+                        "slot_desc": slot_desc,
+                        "slot_expr": slot_expr,
+                        "reason": f"No job covers {slot_desc} ({slot_expr}) for {cat}",
+                    })
+
+        # ── Orphan & Never-Run Detection ──────────────────────────────────────
+        orphans = [j for j in jobs_data if j.get("enabled") and not j.get("skills")]
+        never_run = [j for j in jobs_data if j.get("enabled") and not j.get("last_run")]
+
+        # ── Coverage Score ────────────────────────────────────────────────────
+        total_slots = sum(len(s["required_slots"]) for s in self.CATEGORY_SCHEMAS.values())
+        filled = total_slots - len(gaps)
+        coverage_pct = round(filled / total_slots * 100) if total_slots > 0 else 100
+
+        # ── Topology (nodes + edges) ──────────────────────────────────────────
+        nodes = []
+        for j in jobs_data:
+            category = self._infer_category(j)
+            # Size based on recency
+            last_run = j.get("last_run", "")
+            size = 6
+            if last_run:
+                try:
+                    from datetime import datetime
+                    lr = datetime.fromisoformat(last_run)
+                    age_h = (datetime.now() - lr).total_seconds() / 3600
+                    size = max(4, min(12, 10 - age_h * 0.3))
+                except Exception:
+                    size = 5
+
+            nodes.append({
+                "id": j["id"],
+                "name": j["name"],
+                "category": category,
+                "size": size,
+                "enabled": j.get("enabled", False),
+                "last_status": j.get("last_status", ""),
+                "schedule": j.get("schedule", ""),
+            })
+
+        edges = self._infer_edges(jobs_data)
+
+        # ── Recommendations ────────────────────────────────────────────────────
+        recommendations = self._generate_recommendations(jobs_data, gaps, orphans, never_run)
+
+        # ── Category breakdown ────────────────────────────────────────────────
+        categories = {}
+        for cat, schema in self.CATEGORY_SCHEMAS.items():
+            cat_jobs = [j for j in jobs_data if self._infer_category(j) == cat]
+            cat_gaps = [g for g in gaps if g["category"] == cat]
+            categories[cat] = {
+                "description": schema["description"],
+                "jobs": [{"id": j["id"], "name": j["name"], "last_status": j.get("last_status", ""),
+                          "enabled": j.get("enabled", False)} for j in cat_jobs],
+                "gaps": [g["slot_key"] for g in cat_gaps],
+                "filled": len(schema["required_slots"]) - len(cat_gaps),
+                "total": len(schema["required_slots"]),
+            }
+
+        return {
+            "jobs": jobs_data,
+            "coverage_pct": coverage_pct,
+            "gaps": gaps,
+            "orphans": [{"id": j["id"], "name": j["name"], "schedule": j.get("schedule", "")} for j in orphans],
+            "never_run": [{"id": j["id"], "name": j["name"], "schedule": j.get("schedule", "")} for j in never_run],
+            "nodes": nodes,
+            "edges": edges,
+            "recommendations": recommendations,
+            "categories": categories,
+        }
 
     # ── Toolsets / Skills ───────────────────────────────────────────────────────
     # These endpoints don't exist on the current API server port.

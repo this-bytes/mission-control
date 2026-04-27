@@ -195,6 +195,38 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 20:45 UTC
+
+### Changes Made
+
+**Token Tracking in Metrics Panel (NEW)**
+
+Problem: Metrics panel showed commands and errors as zeros even after the service had been running for hours. No token usage tracking existed at all — the most important signal for understanding AI consumption was missing.
+
+Fix — 3-part implementation:
+
+1. **Backend `service/web.py`**: Added `_record_tokens(usage)` function that extracts `prompt_tokens` and `completion_tokens` from OpenAI-style usage dicts and records cumulative totals to the SQLite metrics DB. Wired into both `/api/command` (sync) and `/api/command/stream` (streaming, captures usage from the final SSE chunk that arrives with `finish_reason=stop`). Updated `/api/metrics` to return `token_in` and `token_out` fields.
+
+2. **Frontend `service/templates/index.html`**: Added two new metric cards (TOKEN IN cyan, TOKEN OUT amber) in the Metrics panel grid. `loadMetrics()` now reads `token_in`/`token_out` from the API and renders them with locale-formatted counts and `/hr` rate.
+
+3. **Verified end-to-end**: POST `/api/command` with "ping" → Hermes returns `prompt_tokens: 20704, completion_tokens: 11` → `/api/metrics` shows `token_in: 20704.0, token_out: 11.0` ✓
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 180811, ~5min uptime)
+- Git committed: `440adfc` ✅
+- All 9 API endpoints verified healthy ✅
+- Token tracking live: 20,704 prompt tokens recorded from one test command ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Streaming performance** — increase `chunk_size=1` to ~64 for faster token delivery
+4. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+
+---
+
 ## Session Log — 2026-04-27 20:35 UTC
 
 ### Changes Made
