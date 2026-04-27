@@ -195,6 +195,39 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-28 02:25 UTC
+
+### Changes Made
+
+**Skills Panel — Live Category Dropdown Filter (NEW)**
+
+Problem: Skills panel had a text filter but no way to filter by category. With 111 skills across 28 categories, finding skills in a specific domain (e.g. all `github` or all `creative` skills) required typing the full category name.
+
+Fix — 3-part change:
+
+1. **HTML**: Added `<select id="skills-cat-select">` to the skills filter bar, sitting left of the text input. Styled to match Mission Control theme.
+
+2. **`loadSkills()`**: After loading the catalog, populates the dropdown by extracting unique categories from `_skillsCatalog`, sorting them, and showing each with a count suffix (e.g. `github (7)`, `creative (14)`).
+
+3. **`filterSkills()`**: Rewritten to chain filters: first filter by selected category, then apply text search. Category + text search work together — select `github` then type `pr` to see only GitHub PR-related skills.
+
+Bug fixed: `qLower` was referenced without `const` declaration, leaking to global scope. Added `const`.
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 215386, ~1h uptime)
+- Git committed + pushed: `fd2cf0c` ✅
+- 28 categories populated in dropdown
+- Category + text filter compose correctly
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+
+---
+
 ## Session Log — 2026-04-28 01:20 UTC
 
 ### Changes Made
