@@ -994,6 +994,56 @@ class HermesAdaptor:
                 for row in cur.fetchall()
             ]
 
+            # ── Type inference ───────────────────────────────────────────────────
+            # Hermes memory_store often leaves entity_type NULL or 'unknown'.
+            # Infer types from entity names using keyword matching.
+            def _infer_type(name: str) -> str:
+                n = name.lower()
+                # Systems & infrastructure
+                if any(k in n for k in ['home assistant', 'homelab', 'docker', 'nixos', 'nas',
+                                         'pfsense', 'unraid', 'truenas', 'arr', 'radarr',
+                                         'sonarr', 'proxmox', 'portainer', 'n8n', 'nginx',
+                                         'traefik', 'cloudflare', 'ddns', 'wireguard', 'tailscale']):
+                    return "system"
+                # People & agents
+                if any(k in n for k in ['aaron', 'maxi', 'hermes', 'cron', 'agent', 'runner',
+                                         'paperclip', 'openclaw', 'user', 'person', 'team']):
+                    return "agent"
+                # Code & projects
+                if any(k in n for k in ['github', 'repo', 'branch', 'commit', 'pr ', 'pull request',
+                                         'pipeline', 'workflow', 'action', 'cd', 'ci/', '/ci']):
+                    return "project"
+                # Credentials & secrets
+                if any(k in n for k in ['token', 'key', 'secret', 'credential', 'password',
+                                         'pat', 'oauth', 'api_key', 'api-key', 'env']):
+                    return "credential"
+                # Tasks & todos
+                if any(k in n for k in ['pending', 'task', 'todo', 'action item', 'ticket',
+                                         'issue', 'bug', 'feature']):
+                    return "task"
+                # Documents & notes
+                if any(k in n for k in ['doc', 'document', 'note', 'obsidian', 'vault', 'wiki',
+                                         'markdown', 'readme', 'architecture', 'plan', 'runbook']):
+                    return "document"
+                # Services & APIs
+                if any(k in n for k in ['api', 'service', 'endpoint', 'webhook', 'gateway',
+                                         'server', 'app', 'app/', 'skill', 'tool', 'integration']):
+                    return "service"
+                # Creative content
+                if any(k in n for k in ['blog', 'post', 'article', 'video', 'content',
+                                         'draft', 'script', 'song', 'podcast']):
+                    return "content"
+                # Default fallback
+                return "concept"
+
+            # Apply inference to nodes that lack a real type
+            type_counts: dict[str, int] = {}
+            for node in nodes:
+                t = node["type"]
+                if not t or t == "unknown" or t == "concept":
+                    node["type"] = _infer_type(node["name"])
+                type_counts[node["type"]] = type_counts.get(node["type"], 0) + 1
+
             # Edges: facts link entity pairs
             # Each fact may reference multiple entities — build edge per pair
             cur.execute("""
@@ -1040,7 +1090,13 @@ class HermesAdaptor:
                     })
 
             conn.close()
-            return {"nodes": nodes, "edges": edges}
+            return {
+                "nodes": nodes,
+                "edges": edges,
+                "node_count": len(nodes),
+                "edge_count": len(edges),
+                "type_distribution": type_counts,
+            }
         except Exception as e:
             return {"nodes": [], "edges": [], "error": str(e)}
 

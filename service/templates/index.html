@@ -2608,7 +2608,7 @@ class Graph {
       const dim = focusNodeId && !connected.has(n.id);
       const deg = degree[n.id] || 0;
       const r = hover ? 11 : focused ? 10 : Math.max(5, Math.min(9, 5 + deg));
-      const hue = hashColor(n.name);
+      const hue = typeHue(n);
       ctx.beginPath();
       ctx.arc(n.x, n.y, r, 0, Math.PI*2);
       ctx.fillStyle = dim
@@ -2640,6 +2640,24 @@ function hashColor(s) {
   let h = 0;
   for (const c of s) h = ((h<<5)-h)+c.charCodeAt(0);
   return Math.abs(h) % 360;
+}
+
+// Type → base hue mapping (type-specific colors, hash fallback for concept)
+const TYPE_HUES = {
+  system:     200,   // blue    — infrastructure
+  agent:      280,   // purple  — people & agents
+  project:    150,   // green   — code & repos
+  credential: 30,    // orange  — secrets & keys
+  task:       45,    // amber   — todos & actions
+  document:   170,   // teal    — docs & notes
+  service:    260,   // violet  — APIs & integrations
+  content:    330,   // pink    — creative work
+  concept:    null,  // fall back to hashColor
+};
+
+function typeHue(node) {
+  const h = TYPE_HUES[node.type] ?? null;
+  return h !== null ? h : hashColor(node.name);
 }
 
 function resizeCanvas() {
