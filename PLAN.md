@@ -195,6 +195,34 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-28 00:10 UTC
+
+### Changes Made
+
+**1. Sessions Panel — Always Show Message Preview (UX)**
+
+Previously `msg_preview` (first message content) only appeared in search results. Now it shows as a muted subtitle under every session row — click to expand messages, no click to see what the session is about.
+
+**2. Cron Jobs Panel — Add + Create Button (UX)**
+
+Panel header had a refresh button but no way to create a new cron from the panel itself (modal existed but no trigger). Added `+` button with `onclick="openCronModal()"` to the Cron Jobs panel header actions.
+
+### Current State
+- Service running on port 8420 via systemd ✅ (fresh restart after commit)
+- Git committed + pushed: `8a29707` ✅
+- All API endpoints verified ✅
+- Sessions now show msg_preview always ✅
+- Cron Jobs panel has + create button ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+
+---
+
 ## Session Log — 2026-04-27 23:00 UTC
 
 ### Changes Made
