@@ -195,6 +195,33 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 20:35 UTC
+
+### Changes Made
+
+**Cron Jobs Panel — Show `last_error` + `prompt_preview` (NEW)**
+
+Problem: When a cron job failed, the Cron Jobs panel showed `error` status but no details — you couldn't see what went wrong without digging into logs.
+
+Fix:
+- Cron rows now display `last_error` text inline (red, &#9888; warning icon, truncated 80 chars) when `last_status === 'error'`
+- Cron name title tooltip expanded to show `prompt_preview` on hover — see what the cron actually does before running it
+- API already returned `last_error` and `prompt_preview` — frontend just wasn't rendering them
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 170024, ~2h uptime)
+- Git committed: `d488b5e` ✅
+- All API endpoints healthy ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Homelab network fix** — all 10.87.1.0/24 hosts unreachable from server, not a code issue
+
+---
+
 ## Session Log — 2026-04-27 18:30 UTC
 
 ### Changes Made

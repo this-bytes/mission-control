@@ -899,6 +899,205 @@
       font-size: 9px;
     }
 
+    /* ── Cron Intelligence Panel ──────────────────────────── */
+    #ci-coverage-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; background: var(--surface2);
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .ci-cover-label { font-size: 8px; letter-spacing: 0.1em; color: var(--muted); white-space: nowrap; }
+    .ci-cover-track {
+      flex: 1; height: 4px; background: var(--surface3);
+      border-radius: 2px; overflow: hidden;
+    }
+    .ci-cover-fill { height: 100%; background: var(--cyan); border-radius: 2px; transition: width 0.6s ease; }
+    .ci-cover-pct { font-size: 10px; color: var(--cyan); font-weight: 500; min-width: 32px; text-align: right; }
+    #ci-subtabs {
+      display: flex; gap: 0;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface); flex-shrink: 0;
+    }
+    .ci-tab {
+      flex: 1; padding: 5px 0; background: none; border: none;
+      color: var(--muted); font-family: var(--font); font-size: 9px;
+      letter-spacing: 0.06em; cursor: pointer; transition: color 0.1s;
+    }
+    .ci-tab:hover { color: var(--text); }
+    .ci-tab.active { color: var(--cyan); border-bottom: 1px solid var(--cyan); }
+    .ci-scroll { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+
+    /* Topology view */
+    .ci-topology { display: flex; flex-direction: column; gap: 8px; }
+    .ci-legend { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
+    .ci-legend-item { display: flex; align-items: center; gap: 4px; font-size: 9px; color: var(--muted); }
+    .ci-legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .ci-node-card {
+      border: 1px solid var(--border); border-radius: 3px; padding: 7px 9px;
+      background: var(--surface2); transition: border-color 0.1s; cursor: default;
+    }
+    .ci-node-card:hover { border-color: var(--cyan); }
+    .ci-node-card.error { border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.04); }
+    .ci-node-card.disabled { opacity: 0.45; }
+    .ci-node-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 3px; }
+    .ci-node-name { color: var(--text-bright); font-size: 11px; font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ci-node-cat { font-size: 8px; padding: 1px 5px; border-radius: 2px; }
+    .ci-cat-ops { background: rgba(0,180,212,0.15); color: var(--cyan); }
+    .ci-cat-memory { background: rgba(180,0,212,0.15); color: #c060ff; }
+    .ci-cat-creative { background: rgba(245,166,35,0.15); color: var(--amber); }
+    .ci-cat-self_improvement { background: rgba(245,200,35,0.12); color: #f5c823; }
+    .ci-cat-paperclip { background: rgba(0,230,118,0.12); color: var(--green-dim); }
+    .ci-cat-briefings { background: rgba(100,180,255,0.12); color: #64b4ff; }
+    .ci-cat-other { background: rgba(100,100,100,0.15); color: var(--muted); }
+    .ci-node-meta { font-size: 9px; color: var(--muted); display: flex; gap: 8px; }
+    .ci-node-sched { color: var(--text); }
+    .ci-node-status { color: var(--muted); }
+    .ci-node-status.ok { color: var(--green-dim); }
+    .ci-node-status.err { color: var(--red); }
+    .ci-node-actions { display: flex; gap: 4px; margin-top: 5px; }
+    .ci-edge-list { font-size: 9px; color: var(--muted); padding-left: 12px; }
+    .ci-edge-item { color: var(--cyan); }
+    .ci-filter-bar { display: flex; gap: 6px; flex-wrap: wrap; }
+    .ci-filter-btn {
+      font-size: 8px; padding: 2px 7px; background: var(--surface3); border: 1px solid var(--border2);
+      border-radius: 2px; color: var(--muted); cursor: pointer; transition: all 0.1s;
+    }
+    .ci-filter-btn.active, .ci-filter-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .ci-cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 8px; }
+    .ci-cat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 6px 8px; }
+    .ci-cat-name { font-size: 9px; color: var(--text-bright); font-weight: 500; margin-bottom: 2px; }
+    .ci-cat-fill { font-size: 8px; color: var(--muted); }
+    .ci-cat-gaps { font-size: 8px; margin-top: 2px; }
+    .ci-cat-gaps span { padding: 0 3px; background: rgba(245,166,35,0.15); color: var(--amber); border-radius: 2px; margin-right: 2px; }
+
+    /* Gaps view */
+    .ci-gap-row {
+      border: 1px solid var(--border); border-radius: 3px; padding: 7px 9px;
+      background: var(--surface2); margin-bottom: 5px;
+    }
+    .ci-gap-row.high { border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.04); }
+    .ci-gap-row.medium { border-color: rgba(245,166,35,0.3); background: rgba(245,166,35,0.04); }
+    .ci-gap-row.low { border-color: rgba(100,100,100,0.3); }
+    .ci-priority-badge { font-size: 8px; padding: 1px 5px; border-radius: 2px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+    .ci-priority-badge.high { background: rgba(239,68,68,0.2); color: var(--red); }
+    .ci-priority-badge.medium { background: rgba(245,166,35,0.2); color: var(--amber); }
+    .ci-priority-badge.low { background: rgba(100,100,100,0.2); color: var(--muted); }
+    .ci-gap-cat { font-size: 9px; color: var(--muted); margin-top: 3px; }
+    .ci-gap-slot { font-size: 10px; color: var(--text-bright); margin: 4px 0 2px; }
+    .ci-gap-reason { font-size: 9px; color: var(--muted); }
+    .ci-create-btn {
+      margin-top: 5px; font-size: 9px; padding: 2px 8px; background: rgba(0,180,212,0.1);
+      border: 1px solid rgba(0,180,212,0.3); border-radius: 2px; color: var(--cyan);
+      cursor: pointer; transition: all 0.1s;
+    }
+    .ci-create-btn:hover { background: rgba(0,180,212,0.2); border-color: var(--cyan); }
+
+    /* Jobs view */
+    .ci-job-row {
+      border: 1px solid var(--border); border-radius: 3px; padding: 8px 9px;
+      background: var(--surface2); margin-bottom: 5px; transition: border-color 0.1s;
+    }
+    .ci-job-row:hover { border-color: var(--border2); }
+    .ci-job-row.error { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.04); }
+    .ci-job-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
+    .ci-job-name { color: var(--text-bright); font-size: 11px; font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ci-job-run { font-size: 9px; padding: 2px 8px; background: rgba(0,180,212,0.08); border: 1px solid rgba(0,180,212,0.25); border-radius: 2px; color: var(--cyan); cursor: pointer; transition: all 0.1s; }
+    .ci-job-run:hover { background: rgba(0,180,212,0.18); border-color: var(--cyan); }
+    .ci-job-edit { font-size: 9px; padding: 2px 8px; background: rgba(100,100,100,0.08); border: 1px solid rgba(100,100,100,0.25); border-radius: 2px; color: var(--muted); cursor: pointer; transition: all 0.1s; }
+    .ci-job-edit:hover { color: var(--text); border-color: var(--border2); }
+    .ci-job-meta { font-size: 9px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 10px; }
+    .ci-job-sched { color: var(--text); }
+    .ci-job-next { color: var(--cyan); }
+    .ci-job-last { }
+    .ci-job-last.ok { color: var(--green-dim); }
+    .ci-job-last.err { color: var(--red); }
+    .ci-job-error { font-size: 9px; color: var(--red); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ci-job-skills { font-size: 9px; color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ci-skills-tag { display: inline-block; background: var(--surface3); border: 1px solid var(--border); border-radius: 2px; padding: 0 4px; margin-right: 3px; }
+    .ci-new-btn {
+      display: block; width: 100%; padding: 6px; background: var(--surface2); border: 1px dashed var(--border2);
+      border-radius: 3px; color: var(--muted); font-family: var(--font); font-size: 9px;
+      cursor: pointer; text-align: center; transition: all 0.1s; letter-spacing: 0.04em;
+    }
+    .ci-new-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* Recommendations view */
+    .ci-rec-row {
+      border: 1px solid var(--border); border-radius: 3px; padding: 8px 9px;
+      background: var(--surface2); margin-bottom: 6px;
+    }
+    .ci-rec-row.high { border-color: rgba(239,68,68,0.4); }
+    .ci-rec-row.medium { border-color: rgba(245,166,35,0.35); }
+    .ci-rec-row.low { border-color: rgba(100,100,100,0.3); }
+    .ci-rec-top { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+    .ci-rec-name { color: var(--text-bright); font-size: 11px; font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ci-rec-text { font-size: 10px; color: var(--text); line-height: 1.5; margin-bottom: 5px; }
+    .ci-rec-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+    .ci-rec-action-btn {
+      font-size: 9px; padding: 2px 8px; border-radius: 2px; cursor: pointer; transition: all 0.1s;
+    }
+    .ci-rec-create { background: rgba(0,180,212,0.1); border: 1px solid rgba(0,180,212,0.3); color: var(--cyan); }
+    .ci-rec-create:hover { background: rgba(0,180,212,0.22); }
+    .ci-rec-apply { background: rgba(0,230,118,0.1); border: 1px solid rgba(0,230,118,0.3); color: var(--green); }
+    .ci-rec-apply:hover { background: rgba(0,230,118,0.22); }
+    .ci-rec-dismiss { background: rgba(100,100,100,0.08); border: 1px solid rgba(100,100,100,0.25); color: var(--muted); }
+    .ci-rec-dismiss:hover { color: var(--text); }
+    .ci-rec-proposal { margin-top: 6px; padding: 6px 8px; background: var(--surface3); border-radius: 2px; border-left: 2px solid var(--cyan); }
+    .ci-rec-proposal-label { font-size: 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+    .ci-rec-proposal-val { font-size: 9px; color: var(--text); }
+    .ci-rec-proposal-val strong { color: var(--cyan); }
+
+    /* ── Cron Modal ──────────────────────────────────────────── */
+    #cron-modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,0.75); align-items: center; justify-content: center;
+    }
+    #cron-modal-overlay.open { display: flex; }
+    #cron-modal-box {
+      width: 540px; max-width: 95vw; max-height: 88vh; overflow-y: auto;
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 4px; box-shadow: 0 24px 80px rgba(0,0,0,0.9);
+    }
+    #cron-modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      background: var(--surface2); border-radius: 4px 4px 0 0;
+    }
+    #cron-modal-title { font-size: 12px; color: var(--text-bright); font-weight: 600; }
+    .cron-modal-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; }
+    .cron-modal-close:hover { color: var(--text); }
+    #cron-form { padding: 12px 14px; }
+    .cron-form-row { margin-bottom: 10px; }
+    .cron-form-label { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 4px; }
+    .cron-form-input {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 3px; color: var(--text-bright); font-family: var(--font);
+      font-size: 11px; padding: 6px 8px; outline: none; resize: vertical;
+    }
+    .cron-form-input:focus { border-color: var(--cyan); }
+    .cron-form-input::placeholder { color: var(--muted); }
+    .cron-form-hint { font-size: 9px; color: var(--muted); margin-top: 3px; }
+    .cron-form-hint code { background: var(--surface3); padding: 0 3px; border-radius: 2px; color: var(--text); }
+    .cron-form-error { font-size: 10px; color: var(--red); margin-bottom: 8px; min-height: 14px; }
+    #cron-form-actions { display: flex; gap: 6px; align-items: center; }
+    .cron-form-submit {
+      flex: 1; padding: 7px; background: rgba(0,180,212,0.15); border: 1px solid rgba(0,180,212,0.35);
+      border-radius: 3px; color: var(--cyan); font-family: var(--font); font-size: 11px;
+      cursor: pointer; transition: all 0.1s; font-weight: 500;
+    }
+    .cron-form-submit:hover { background: rgba(0,180,212,0.25); border-color: var(--cyan); }
+    .cron-form-cancel {
+      padding: 7px 12px; background: none; border: 1px solid var(--border2);
+      border-radius: 3px; color: var(--muted); font-family: var(--font); font-size: 11px;
+      cursor: pointer; transition: all 0.1s;
+    }
+    .cron-form-cancel:hover { color: var(--text); border-color: var(--muted); }
+    .cron-form-delete {
+      padding: 7px 12px; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 3px; color: var(--red); font-family: var(--font); font-size: 11px;
+      cursor: pointer; transition: all 0.1s;
+    }
+    .cron-form-delete:hover { background: rgba(239,68,68,0.18); }
+
     /* ── Live Feed ────────────────────────────────────────── */
     #events-panel {
       display: flex;
@@ -1093,6 +1292,7 @@
     <div id="tab-bar">
       <button class="tab" id="tab-graph" onclick="switchTab('graph')">Graph</button>
       <button class="tab" id="tab-history" onclick="switchTab('history')">History</button>
+      <button class="tab" id="tab-crons" onclick="switchTab('crons')">Crons</button>
       <button class="tab" id="tab-paperclip" onclick="switchTab('paperclip')">Issues</button>
       <button class="tab" id="tab-skills" onclick="switchTab('skills')">Skills</button>
       <button class="tab" id="tab-metrics" onclick="switchTab('metrics')">Metrics</button>
@@ -1107,6 +1307,29 @@
       <div id="graph-detail">
         <span class="detail-empty">Click any node to explore connections</span>
       </div>
+    </div>
+
+    <!-- Crons Intelligence -->
+    <div class="tab-panel" id="panel-crons">
+      <!-- Coverage score bar -->
+      <div id="ci-coverage-bar">
+        <span class="ci-cover-label">COVERAGE</span>
+        <div class="ci-cover-track">
+          <div class="ci-cover-fill" id="ci-cover-fill"></div>
+        </div>
+        <span class="ci-cover-pct" id="ci-cover-pct">—</span>
+      </div>
+
+      <!-- Sub-tabs -->
+      <div id="ci-subtabs">
+        <button class="ci-tab active" id="ci-tab-topology" onclick="ciSwitchSub('topology')">Topology</button>
+        <button class="ci-tab" id="ci-tab-gaps" onclick="ciSwitchSub('gaps')">Gaps</button>
+        <button class="ci-tab" id="ci-tab-jobs" onclick="ciSwitchSub('jobs')">Jobs</button>
+        <button class="ci-tab" id="ci-tab-recs" onclick="ciSwitchSub('recs')">Recs</button>
+      </div>
+
+      <!-- Sub-tab content -->
+      <div id="ci-content" class="ci-scroll"></div>
     </div>
 
     <!-- History -->
@@ -1176,6 +1399,16 @@
             <div class="metric-card-label">ERROR RATE</div>
             <div class="metric-card-value" id="m-error-pct">—</div>
             <div class="metric-card-sub">of commands</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-label">TOKEN IN</div>
+            <div class="metric-card-value cyan" id="m-token-in">—</div>
+            <div class="metric-card-sub" id="m-token-in-rate">— /hr</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-card-label">TOKEN OUT</div>
+            <div class="metric-card-value amber" id="m-token-out">—</div>
+            <div class="metric-card-sub" id="m-token-out-rate">— /hr</div>
           </div>
         </div>
         <div id="metrics-since">
@@ -1260,6 +1493,52 @@
       <span><kbd>&#8629;</kbd> execute</span>
       <span><kbd>ESC</kbd> close</span>
     </div>
+  </div>
+</div>
+
+<!-- ── Cron Create/Edit Modal ─────────────────────────────────────────────── -->
+<div id="cron-modal-overlay" onclick="if(event.target===this)closeCronModal()">
+  <div id="cron-modal-box">
+    <div id="cron-modal-header">
+      <span id="cron-modal-title">New Cron Job</span>
+      <button class="cron-modal-close" onclick="closeCronModal()">&#10005;</button>
+    </div>
+    <form id="cron-form" onsubmit="submitCronForm(event)">
+      <input type="hidden" id="cron-job-id" value="" />
+      <div class="cron-form-row">
+        <label class="cron-form-label">Name</label>
+        <input class="cron-form-input" id="cron-name" type="text" placeholder="e.g. Evening Ops Report" required />
+      </div>
+      <div class="cron-form-row">
+        <label class="cron-form-label">Schedule</label>
+        <input class="cron-form-input" id="cron-schedule" type="text" placeholder="0 21 * * *" />
+        <div class="cron-form-hint">Cron expr: <code>0 21 * * *</code> = 9pm daily &nbsp;|&nbsp; <code>0 9 * * 0,6</code> = 9am Sat/Sun</div>
+      </div>
+      <div class="cron-form-row">
+        <label class="cron-form-label">Prompt</label>
+        <textarea class="cron-form-input" id="cron-prompt" rows="5" placeholder="What should this job do?"></textarea>
+      </div>
+      <div class="cron-form-row">
+        <label class="cron-form-label">Skills</label>
+        <input class="cron-form-input" id="cron-skills" type="text" placeholder="anh-ops, session_search (comma-separated)" />
+      </div>
+      <div class="cron-form-row">
+        <label class="cron-form-label">Deliver to</label>
+        <select class="cron-form-input" id="cron-deliver">
+          <option value="origin">origin — current chat</option>
+          <option value="local">local — save only</option>
+          <option value="telegram:7705898692">Telegram DM</option>
+          <option value="discord:1491672683166044235">Discord #ops-logs</option>
+          <option value="discord:1491672788459720754">Discord #alerts</option>
+        </select>
+      </div>
+      <div id="cron-form-error" class="cron-form-error"></div>
+      <div id="cron-form-actions">
+        <button type="submit" class="cron-form-submit" id="cron-submit-btn">Create</button>
+        <button type="button" class="cron-form-cancel" onclick="closeCronModal()">Cancel</button>
+        <button type="button" class="cron-form-delete" id="cron-delete-btn" onclick="deleteCronFromModal()" style="display:none">Delete</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -1425,6 +1704,7 @@ function switchTab(name) {
   $(`panel-${name}`).classList.add('active');
   if (name === 'graph') resizeCanvas();
   if (name === 'links') loadLinks();
+  if (name === 'crons') loadCronIntel();
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1589,47 +1869,346 @@ async function loadSessionPage(sessionId) {
 /* ══════════════════════════════════════════════════════════════
    CRON JOBS
 ══════════════════════════════════════════════════════════════ */
-async function loadCrons() {
-  const d = await api('/api/cron-jobs');
-  const body = $('crons-body');
-  const strip = $('strip-jobs');
-  if (!d.ok || !d.data) { body.innerHTML = '<div class="err-msg">Failed</div>'; return; }
-  setGauge('g-crons', d.data.length);
-  _cronJobs = d.data;
+/* ══════════════════════════════════════════════════════════════
+   CRON INTELLIGENCE
+══════════════════════════════════════════════════════════════ */
+let _ciCache = null;
+let _ciJobs = [];
+let _ciSub = 'topology';
 
-  if (d.data.length === 0) {
-    body.innerHTML = '<div class="empty-msg">No cron jobs</div>';
-    strip.innerHTML = '<span style="color:var(--muted);font-size:10px">None scheduled</span>';
-    return;
+const CI_CATS = {
+  ops: 'Ops', paperclip: 'Paperclip', creative: 'Creative',
+  self_improvement: 'Self-Improve', memory: 'Memory',
+  briefings: 'Briefings', other: 'Other',
+};
+const CI_CAT_COLORS = {
+  ops: '#00b4d4', paperclip: '#00e676', creative: '#f5a623',
+  self_improvement: '#f5c823', memory: '#c060ff',
+  briefings: '#64b4ff', other: '#888',
+};
+
+function ciGetCatClass(cat) { return 'ci-cat-' + (cat || 'other'); }
+function ciGetCatLabel(cat) { return CI_CATS[cat] || cat || 'Other'; }
+function ciGetCatColor(cat) { return CI_CAT_COLORS[cat] || '#888'; }
+function ciIsEnabled(job) { return job.enabled !== false && job.schedule !== 'disabled'; }
+
+async function loadCronIntel() {
+  const d = await api('/api/cron-intel');
+  if (!d.ok || !d.data) { _ciCache = null; return; }
+  _ciCache = d.data;
+  _ciJobs = d.data.jobs || [];
+  // Update coverage bar
+  const cov = d.data.coverage_pct || d.data.coverage_score || 0;
+  const fill = $('ci-cover-fill');
+  const pct = $('ci-cover-pct');
+  if (fill) { fill.style.width = cov + '%'; fill.style.background = cov < 40 ? 'var(--amber)' : cov < 70 ? 'var(--cyan)' : 'var(--green)'; }
+  if (pct) pct.textContent = Math.round(cov) + '%';
+  // Re-render current subtab
+  ciRender(_ciSub);
+}
+
+function ciSwitchSub(name) {
+  _ciSub = name;
+  $$('.ci-tab').forEach(t => t.classList.remove('active'));
+  $$('.ci-subtab').forEach(t => t.classList.remove('active'));
+  const btn = $('ci-tab-' + name);
+  if (btn) btn.classList.add('active');
+  if (_ciCache) ciRender(name);
+}
+
+function ciRender(name) {
+  const content = $('ci-content');
+  if (!content || !_ciCache) return;
+  switch (name) {
+    case 'topology': content.innerHTML = ciRenderTopology(_ciCache); break;
+    case 'gaps':     content.innerHTML = ciRenderGaps(_ciCache);     break;
+    case 'jobs':     content.innerHTML = ciRenderJobs(_ciJobs);       break;
+    case 'recs':     content.innerHTML = ciRenderRecs(_ciCache);      break;
   }
+}
 
-  body.innerHTML = d.data.slice(0, 15).map(j => {
-    const statusCls = j.last_status === 'error' ? 'err' : j.last_status === 'ok' ? 'ok' : '';
-    const next = j.next_run ? j.next_run.slice(11, 16) : '—';
-    const errorLine = (j.last_status === 'error' && j.last_error) ? `<div class="cron-error">&#9888; ${esc(j.last_error.slice(0, 80))}</div>` : '';
-    return `<div class="cron-row">
-      <div class="cron-row-top">
-        <span class="cron-name" title="${esc(j.name + '\n' + (j.prompt_preview || ''))}">${esc(j.name)}</span>
-        <button class="cron-run-btn" onclick="runCron('${esc(j.id)}','${esc(j.name.replace(/'/g,""))}')">RUN</button>
-      </div>
-      <div class="cron-meta">
-        <span class="cron-sched">${esc(j.schedule)}</span>
-        <span class="cron-status ${statusCls}">${j.last_status || 'never'}</span>
-        <span class="cron-next">next ${next}</span>
-      </div>
-      ${errorLine}
+function ciRenderTopology(intel) {
+  const jobs = intel.jobs || [];
+  const gaps = intel.gaps || [];
+  const catCount = {};
+  jobs.forEach(j => { const c = j.category || 'other'; catCount[c] = (catCount[c] || 0) + 1; });
+  gaps.forEach(g => { const c = g.category || 'other'; catCount[c] = (catCount[c] || 0) + 0; });
+
+  // Legend
+  let legend = '<div class="ci-legend">';
+  legend += '<div class="ci-legend-item"><div class="ci-legend-dot" style="background:#00b4d4"></div><span>Ops</span></div>';
+  legend += '<div class="ci-legend-item"><div class="ci-legend-dot" style="background:#00e676"></div><span>Paperclip</span></div>';
+  legend += '<div class="ci-legend-item"><div class="ci-legend-dot" style="background:#f5a623"></div><span>Creative</span></div>';
+  legend += '<div class="ci-legend-item"><div class="ci-legend-dot" style="background:#f5c823"></div><span>Self-Improve</span></div>';
+  legend += '<div class="ci-legend-item"><div class="ci-legend-dot" style="background:#c060ff"></div><span>Memory</span></div>';
+  legend += '<div class="ci-legend-item"><div class="ci-legend-dot" style="background:#64b4ff"></div><span>Briefings</span></div>';
+  legend += '<div class="ci-legend-item"><div class="ci-legend-dot" style="background:#888"></div><span>Other</span></div>';
+  legend += '</div>';
+
+  // Category grid
+  let catGrid = '<div class="ci-cat-grid">';
+  const cats = Object.keys(CI_CATS);
+  cats.forEach(cat => {
+    const count = catCount[cat] || 0;
+    const catGaps = gaps.filter(g => (g.category || 'other') === cat).length;
+    const hasGaps = catGaps > 0;
+    catGrid += `<div class="ci-cat-card">
+      <div class="ci-cat-name" style="color:${ciGetCatColor(cat)}">${ciGetCatLabel(cat)}</div>
+      <div class="ci-cat-fill">${count} job${count !== 1 ? 's' : ''}</div>
+      ${hasGaps ? `<div class="ci-cat-gaps"><span>${catGaps} gap${catGaps !== 1 ? 's' : ''}</span></div>` : ''}
     </div>`;
-  }).join('');
+  });
+  catGrid += '</div>';
 
-  // Strip: next 5
-  const sorted = [...d.data].filter(j => j.next_run).sort((a, b) => a.next_run.localeCompare(b.next_run));
-  strip.innerHTML = sorted.slice(0, 5).map(j =>
-    `<div class="strip-job" onclick="runCron('${esc(j.id)}','${esc(j.name.replace(/'/g,""))}')">
-      <span class="run-icon">&#9654;</span>
-      <span class="job-name">${esc(j.name)}</span>
-      <span class="job-time">${j.next_run ? j.next_run.slice(11,16) : ''}</span>
-    </div>`
-  ).join('') || '<span style="color:var(--muted);font-size:10px">None</span>';
+  // Filter bar
+  const filterCats = ['all', ...cats.filter(c => catCount[c])];
+  let filterBar = '<div class="ci-filter-bar">';
+  filterCats.forEach(c => {
+    filterBar += `<button class="ci-filter-btn${c === 'all' ? ' all active' : ''}" id="ci-filter-${c}" onclick="ciFilterTopology('${c}')">${c === 'all' ? 'All' : ciGetCatLabel(c)}</button>`;
+  });
+  filterBar += '</div>';
+
+  // Node cards
+  let nodes = '<div class="ci-topology" id="ci-topology-nodes">';
+  jobs.forEach(job => {
+    const enabled = ciIsEnabled(job);
+    const hasError = job.last_status === 'error';
+    const cat = job.category || 'other';
+    const color = ciGetCatColor(cat);
+    const edges = job.writes_to_sessions || [];
+    const readers = job.reads_from_sessions || [];
+    const statusCls = hasError ? 'err' : enabled ? 'ok' : '';
+    nodes += `<div class="ci-node-card${hasError ? ' error' : ''}${!enabled ? ' disabled' : ''}" data-cat="${cat}">
+      <div class="ci-node-top">
+        <div class="ci-node-name">${esc(job.name)}</div>
+        <span class="ci-node-cat ${ciGetCatClass(cat)}">${ciGetCatLabel(cat)}</span>
+      </div>
+      <div class="ci-node-meta">
+        <span class="ci-node-sched">${esc(job.schedule || '—')}</span>
+        <span class="ci-node-status ${statusCls}">${hasError ? 'error' : enabled ? 'active' : 'disabled'}</span>
+        ${job.next_run ? `<span>next ${job.next_run.slice(11,16)}</span>` : ''}
+      </div>
+      ${(edges.length || readers.length) ? `<div class="ci-edge-list">
+        ${edges.map(e => `<div class="ci-edge-item">&#8594; ${esc(e)}</div>`).join('')}
+        ${readers.map(e => `<div style="color:var(--muted)">&#8592; ${esc(e)}</div>`).join('')}
+      </div>` : ''}
+      <div class="ci-node-actions">
+        <button class="ci-job-run" onclick="runCron('${esc(job.id)}','${esc(job.name.replace(/'/g, "\\'"))}')">Run</button>
+        <button class="ci-job-edit" onclick="openCronModal(_ciJobs.find(j=>j.id==='${esc(job.id)}'))">Edit</button>
+      </div>
+    </div>`;
+  });
+  nodes += '</div>';
+
+  return legend + catGrid + filterBar + nodes;
+}
+
+function ciFilterTopology(cat) {
+  $$('.ci-filter-btn').forEach(b => b.classList.remove('active'));
+  const btn = $('ci-filter-' + cat);
+  if (btn) btn.classList.add('active');
+  $$('.ci-node-card').forEach(card => {
+    if (cat === 'all' || card.dataset.cat === cat) card.style.display = '';
+    else card.style.display = 'none';
+  });
+}
+
+function ciRenderGaps(intel) {
+  const gaps = intel.gaps || [];
+  if (!gaps.length) {
+    return '<div class="ci-scroll"><div class="ci-gap-row" style="text-align:center;color:var(--muted);font-size:10px;padding:16px">No gaps detected &#10003; Your schedule looks complete.</div></div>';
+  }
+  let html = '<div class="ci-scroll">';
+  html += `<div class="ci-section-title">${gaps.length} Gap${gaps.length !== 1 ? 's' : ''} Found</div>`;
+  gaps.forEach(gap => {
+    html += `<div class="ci-gap-row ${gap.priority || 'low'}">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span class="ci-priority-badge ${gap.priority || 'low'}">${gap.priority || 'low'}</span>
+        <span class="ci-gap-slot">${esc(gap.time_slot || gap.slot || '—')}</span>
+      </div>
+      ${gap.category ? `<div class="ci-gap-cat">${ciGetCatLabel(gap.category)}</div>` : ''}
+      <div class="ci-gap-reason">${esc(gap.reason || gap.description || '')}</div>
+      ${gap.slot_expr ? `<div class="ci-gap-reason" style="margin-top:3px">Try: <strong style="color:var(--cyan)">${esc(gap.slot_expr)}</strong></div>` : ''}
+      ${gap.suggested_prompt ? `<div style="font-size:9px;color:var(--text);margin-top:4px;line-height:1.4">${esc(gap.suggested_prompt.slice(0, 120))}${gap.suggested_prompt.length > 120 ? '…' : ''}</div>` : ''}
+      <button class="ci-create-btn" onclick="openCronModalFromGap(${JSON.stringify(gap).replace(/"/g, '&quot;')})">+ Create Cron</button>
+    </div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function ciRenderJobs(jobs) {
+  if (!jobs || !jobs.length) {
+    return '<div class="ci-scroll"><button class="ci-new-btn" onclick="openCronModal()">+ New Cron Job</button><div style="text-align:center;color:var(--muted);font-size:10px;padding:16px">No cron jobs yet. Create your first one.</div></div>';
+  }
+  let html = `<div class="ci-scroll"><button class="ci-new-btn" onclick="openCronModal()">+ New Cron Job</button>`;
+  jobs.forEach(job => {
+    const enabled = ciIsEnabled(job);
+    const hasError = job.last_status === 'error';
+    html += `<div class="ci-job-row${hasError ? ' error' : ''}" id="ci-job-${esc(job.id)}">
+      <div class="ci-job-top">
+        <div class="ci-job-name">${esc(job.name)}</div>
+        <div style="display:flex;gap:4px">
+          <button class="ci-job-run" onclick="runCron('${esc(job.id)}','${esc(job.name.replace(/'/g, "\\'"))}')">Run</button>
+          <button class="ci-job-edit" onclick="openCronModal(_ciJobs.find(j=>j.id==='${esc(job.id)}'))">Edit</button>
+        </div>
+      </div>
+      <div class="ci-job-meta">
+        <span class="ci-job-sched">${esc(job.schedule || '—')}</span>
+        ${job.next_run ? `<span class="ci-job-next">next ${job.next_run.slice(11,16)}</span>` : ''}
+        <span class="ci-job-last ${job.last_status || ''}">${job.last_status === 'ok' ? '&#10003; OK' : job.last_status === 'error' ? '&#10005; Error' : '— never run'}</span>
+      </div>
+      ${hasError && job.last_error ? `<div class="ci-job-error" title="${esc(job.last_error)}">&#9888; ${esc(job.last_error.slice(0, 80))}</div>` : ''}
+      ${job.skills && job.skills.length ? `<div class="ci-job-skills">${job.skills.map(s => `<span class="ci-skills-tag">${esc(s)}</span>`).join('')}</div>` : ''}
+    </div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function ciRenderRecs(intel) {
+  const recs = intel.recommendations || [];
+  if (!recs.length) {
+    return '<div class="ci-scroll"><div style="text-align:center;color:var(--muted);font-size:10px;padding:16px">No recommendations right now. Your schedule looks covered.</div></div>';
+  }
+  let html = '<div class="ci-scroll">';
+  html += `<div class="ci-section-title">${recs.length} Recommendation${recs.length !== 1 ? 's' : ''}</div>`;
+  recs.forEach((rec, i) => {
+    html += `<div class="ci-rec-row ${rec.priority || 'low'}" id="ci-rec-${i}">
+      <div class="ci-rec-top">
+        <span class="ci-priority-badge ${rec.priority || 'low'}">${rec.priority || 'low'}</span>
+        <div class="ci-rec-name">${esc(rec.name || rec.title || 'Recommendation')}</div>
+      </div>
+      <div class="ci-rec-text">${esc(rec.text || rec.description || rec.reason || '')}</div>
+      ${rec.proposal && rec.proposal.schedule ? `<div class="ci-rec-proposal">
+        <div class="ci-rec-proposal-label">Suggested Schedule</div>
+        <div class="ci-rec-proposal-val"><strong>${esc(rec.proposal.schedule)}</strong></div>
+      </div>` : ''}
+      ${rec.proposal && rec.proposal.prompt ? `<div class="ci-rec-proposal" style="margin-top:5px">
+        <div class="ci-rec-proposal-label">Suggested Prompt</div>
+        <div class="ci-rec-proposal-val">${esc(rec.proposal.prompt.slice(0, 100))}…</div>
+      </div>` : ''}
+      <div class="ci-rec-actions">
+        <button class="ci-rec-action-btn ci-rec-create" onclick="openCronModalFromRec(${JSON.stringify(rec).replace(/"/g, '&quot;')})">+ Create</button>
+        <button class="ci-rec-action-btn ci-rec-dismiss" onclick="dismissCIRec(${i})">Dismiss</button>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function dismissCIRec(idx) {
+  const el = $('ci-rec-' + idx);
+  if (el) el.style.display = 'none';
+}
+
+function openCronModalFromGap(gap) {
+  const rec = {
+    name: gap.suggested_name || gap.name || `Fill: ${gap.time_slot || gap.slot}`,
+    schedule: gap.proposed_schedule || gap.suggested_schedule || '',
+    prompt: gap.suggested_prompt || gap.description || '',
+    skills: gap.suggested_skills || [],
+    category: gap.category || 'ops',
+  };
+  openCronModal(rec);
+}
+
+function openCronModalFromRec(rec) {
+  const prop = rec.proposal || {};
+  openCronModal({
+    name: prop.name || rec.name || rec.suggested_name || rec.title || '',
+    schedule: prop.schedule || rec.proposed_schedule || rec.suggested_schedule || rec.schedule || '',
+    prompt: prop.prompt || rec.proposed_prompt || rec.suggested_prompt || rec.description || rec.text || '',
+    skills: prop.skills || rec.suggested_skills || rec.skills || [],
+    category: rec.category || 'ops',
+  });
+}
+
+/* ── CRUD Modal ────────────────────────────────────────── */
+function openCronModal(job) {
+  const overlay = $('cron-modal-overlay');
+  const title = $('cron-modal-title');
+  const submitBtn = $('cron-submit-btn');
+  const deleteBtn = $('cron-delete-btn');
+  const errorEl = $('cron-form-error');
+  if (!overlay) return;
+  errorEl.textContent = '';
+  if (job && job.id) {
+    title.textContent = 'Edit Cron Job';
+    submitBtn.textContent = 'Save';
+    deleteBtn.style.display = '';
+    $('cron-job-id').value = job.id;
+    $('cron-name').value = job.name || '';
+    $('cron-schedule').value = job.schedule || '';
+    $('cron-prompt').value = job.prompt || job.prompt_preview || '';
+    $('cron-skills').value = Array.isArray(job.skills) ? job.skills.join(', ') : '';
+    $('cron-deliver').value = job.deliver_to || 'origin';
+  } else {
+    title.textContent = 'New Cron Job';
+    submitBtn.textContent = 'Create';
+    deleteBtn.style.display = 'none';
+    $('cron-job-id').value = '';
+    $('cron-name').value = job ? (job.name || '') : '';
+    $('cron-schedule').value = job ? (job.schedule || '') : '';
+    $('cron-prompt').value = job ? (job.prompt || '') : '';
+    $('cron-skills').value = job && job.skills ? (Array.isArray(job.skills) ? job.skills.join(', ') : job.skills) : '';
+    $('cron-deliver').value = job && job.deliver_to ? job.deliver_to : 'origin';
+  }
+  overlay.classList.add('open');
+  $('cron-name').focus();
+}
+
+function closeCronModal() {
+  $('cron-modal-overlay').classList.remove('open');
+}
+
+async function submitCronForm(e) {
+  e.preventDefault();
+  const errorEl = $('cron-form-error');
+  errorEl.textContent = '';
+  const id = $('cron-job-id').value;
+  const name = $('cron-name').value.trim();
+  const schedule = $('cron-schedule').value.trim();
+  const prompt = $('cron-prompt').value.trim();
+  const skillsRaw = $('cron-skills').value.trim();
+  const deliver_to = $('cron-deliver').value;
+  const skills = skillsRaw ? skillsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+  if (!name) { errorEl.textContent = 'Name is required.'; return; }
+  const payload = { name, schedule, prompt, skills, deliver: deliver_to };
+  let d;
+  if (id) {
+    d = await api(`/api/cron-jobs/${encodeURIComponent(id)}`, 'PUT', payload);
+  } else {
+    d = await api('/api/cron-jobs', 'POST', payload);
+  }
+  if (d && d.ok) {
+    closeCronModal();
+    loadCronIntel();
+    addMiniFeed('cron', id ? 'Cron updated: ' + name : 'Cron created: ' + name);
+  } else {
+    errorEl.textContent = (d && d.error) ? d.error.message || d.error : 'Failed to save cron job.';
+  }
+}
+
+async function deleteCronFromModal() {
+  const id = $('cron-job-id').value;
+  if (!id) return;
+  if (!confirm('Delete this cron job?')) return;
+  const d = await api(`/api/cron-jobs/${encodeURIComponent(id)}`, 'DELETE');
+  if (d && d.ok) {
+    closeCronModal();
+    loadCronIntel();
+    addMiniFeed('cron', 'Cron deleted');
+  } else {
+    $('cron-form-error').textContent = (d && d.error) ? d.error.message || 'Delete failed.' : 'Delete failed.';
+  }
+}
+
+/* ── Legacy crons (left-panel strip) — keep for backwards compat ── */
+async function loadCrons() {
+  // Load full Cron Intelligence instead
+  await loadCronIntel();
 }
 
 async function runCron(id, name) {
@@ -2498,6 +3077,16 @@ async function loadMetrics() {
   $('m-events-rate').textContent = evtRate + ' ev/hr';
   $('m-error-pct').textContent = errPct;
   $('m-error-pct').style.color = errPct === '0%' ? 'var(--green)' : parseFloat(errPct) > 5 ? 'var(--red)' : 'var(--amber)';
+
+  // Token totals
+  const tokIn  = m.token_in  || 0;
+  const tokOut = m.token_out || 0;
+  const tokInRate  = tokIn  > 0 ? (tokIn  / up_hr).toFixed(0) : '—';
+  const tokOutRate = tokOut > 0 ? (tokOut / up_hr).toFixed(0) : '—';
+  $('m-token-in').textContent  = tokIn  > 0 ? tokIn.toLocaleString()  : '—';
+  $('m-token-in-rate').textContent  = tokInRate + ' /hr';
+  $('m-token-out').textContent = tokOut > 0 ? tokOut.toLocaleString() : '—';
+  $('m-token-out-rate').textContent = tokOutRate + ' /hr';
 
   // 24h sparkline bar chart
   const ts = m.timeseries || [];

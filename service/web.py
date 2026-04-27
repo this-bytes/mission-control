@@ -41,6 +41,8 @@ _MC_START_TS = datetime.now().isoformat()
 _cmd_count = 0
 _err_count = 0
 _events_received = 0
+_token_in_total = 0
+_token_out_total = 0
 
 def _record(metric: str, value: float):
     _metrics_conn.execute(
@@ -63,6 +65,20 @@ def _inc_events():
     global _events_received
     _events_received += 1
     _record("events", _events_received)
+
+def _record_tokens(usage: dict):
+    """Record prompt + completion token counts from an OpenAI-style usage dict."""
+    global _token_in_total, _token_out_total
+    if not usage:
+        return
+    tok_in  = usage.get("prompt_tokens", 0) or usage.get("input_tokens", 0) or 0
+    tok_out = usage.get("completion_tokens", 0) or usage.get("output_tokens", 0) or 0
+    _token_in_total  += tok_in
+    _token_out_total += tok_out
+    if tok_in:
+        _record("token_in", _token_in_total)
+    if tok_out:
+        _record("token_out", _token_out_total)
 
 app = FastAPI(title="Mission Control", version="0.1.0")
 
@@ -303,10 +319,10 @@ async def get_metrics(limit: int = 100):
         # Get latest values for counters
         cur = _metrics_conn.execute("""
             SELECT metric, value FROM metrics
-            WHERE metric IN ('commands','errors','events')
+            WHERE metric IN ('commands','errors','events','token_in','token_out')
             AND ts > datetime('now','-24 hours')
             ORDER BY ts DESC
-            LIMIT 300
+            LIMIT 500
         """)
         rows = cur.fetchall()
 
@@ -342,6 +358,8 @@ async def get_metrics(limit: int = 100):
                 "commands": latest.get("commands", _cmd_count),
                 "errors": latest.get("errors", _err_count),
                 "events": latest.get("events", _events_received),
+                "token_in": latest.get("token_in", _token_in_total),
+                "token_out": latest.get("token_out", _token_out_total),
                 "timeseries": ts_rows,
             }
         }
@@ -370,6 +388,76 @@ async def trigger_cron(job_id: str):
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
+# ── Cron Intelligence ────────────────────────────────────────────────────────
+@app.get("/api/cron-intel")
+async def get_cron_intel():
+    """
+    Full cron intelligence: coverage score, gaps, topology map, orphans,
+    never-run jobs, and actionable recommendations.
+    """
+    try:
+        data = await hermes.get_cron_intel()
+        return {"ok": True, "data": data}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@app.post("/api/cron-jobs")
+async def create_cron(request: Request):
+    """
+    Create a new cron job.
+    Body: {name, prompt, schedule, skills?: string[], deliver?: string}
+    """
+    try:
+        body = await request.json()
+        result = hermes.create_cron(
+            name=body.get("name", "unnamed"),
+            prompt=body.get("prompt", ""),
+            schedule=body.get("schedule", "0 9 * * *"),
+            skills=body.get("skills", []),
+            deliver=body.get("deliver", "origin"),
+        )
+        await emit("cron_created", {"job_id": result.get("job_id"), "name": body.get("name")})
+        return {"ok": True, "data": result}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@app.put("/api/cron-jobs/{job_id}")
+async def update_cron(job_id: str, request: Request):
+    """
+    Update an existing cron job.
+    Body: {enabled?, name?, schedule?, prompt?, deliver?, skills?}
+    At least one field required.
+    """
+    try:
+        body = await request.json()
+        result = hermes.update_cron(
+            job_id=job_id,
+            enabled=body.get("enabled"),
+            name=body.get("name"),
+            schedule=body.get("schedule"),
+            prompt=body.get("prompt"),
+            deliver=body.get("deliver"),
+            skills=body.get("skills"),
+        )
+        await emit("cron_updated", {"job_id": job_id})
+        return {"ok": True, "data": result}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@app.delete("/api/cron-jobs/{job_id}")
+async def delete_cron(job_id: str):
+    """Delete a cron job."""
+    try:
+        result = hermes.delete_cron(job_id)
+        await emit("cron_deleted", {"job_id": job_id})
+        return {"ok": True, "data": result}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
 @app.post("/api/command")
 async def post_command(request: Request):
     """
@@ -384,6 +472,9 @@ async def post_command(request: Request):
         # Call Hermes via OpenAI-compatible API
         result = await hermes.ask(prompt, stream=False)
         content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+        usage = result.get("usage", {})
+        if usage:
+            _record_tokens(usage)
 
         await emit("command_executed", {"prompt": prompt[:80]})
         _inc_cmd()
@@ -393,7 +484,7 @@ async def post_command(request: Request):
                 "prompt": prompt,
                 "response": content,
                 "model": result.get("model", "hermes-agent"),
-                "usage": result.get("usage", {}),
+                "usage": usage,
             }
         }
     except httpx.TimeoutException:
@@ -420,6 +511,7 @@ async def post_command_stream(request: Request):
         _inc_cmd()
 
         async def stream_gen():
+            captured_usage = None
             try:
                 buffer = ""
                 async for line in await hermes.ask(prompt, stream=True):
@@ -430,6 +522,9 @@ async def post_command_stream(request: Request):
                         if event.startswith("data: "):
                             payload = event[6:].strip()
                             if payload == "[DONE]":
+                                # Record token usage captured from the final chunk
+                                if captured_usage:
+                                    _record_tokens(captured_usage)
                                 yield {"event": "done", "data": ""}
                                 return
                             try:
@@ -439,6 +534,9 @@ async def post_command_stream(request: Request):
                                     delta = choices[0].get("delta", {}).get("content", "")
                                     if delta:
                                         yield {"event": "token", "data": delta}
+                                    # Capture usage from the final chunk (finish_reason=stop)
+                                    if choices[0].get("finish_reason") == "stop":
+                                        captured_usage = parsed.get("usage")
                             except Exception:
                                 pass
             except Exception as e:
