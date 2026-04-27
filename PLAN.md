@@ -195,6 +195,31 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 13:50 UTC
+
+### Changes Made
+
+**Briefing Regenerate — Proper Polling + Timeout Feedback (NEW)**
+- Previously: clicked regenerate → "Regenerating..." → single 3s setTimeout → loadBriefing (often showed old briefing or nothing)
+- Now: button shows `...` + amber color while running; content shows `Regenerating... 57s`, `Regenerating... 54s`, etc. countdown every 3s
+- Polls `/api/briefing` every 3s, stops when new briefing detected OR after 15s (accepts whatever Hermes has produced)
+- Hard timeout at 60s: shows `Timed out — check Hermes logs` in red
+- Button state always restored on completion/timeout/error
+
+### Current State
+- Service running on port 8420 via systemd ✅
+- Git committed + pushed: `5c77967` ✅
+- All 9 API endpoints verified ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Morning briefing quality** — content correct; formatting already improved
+
+---
+
 ## Session Log — 2026-04-27 13:45 UTC
 
 ### Changes Made
