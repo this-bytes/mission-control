@@ -195,6 +195,65 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-27 10:20 UTC
+
+### Changes Made
+
+**`/pending` Command — Inline Pending Items in Terminal (NEW)**
+- New built-in command: type `/pending` in the command bar → see pending items instantly in terminal, no panel switch needed
+- Parses morning briefing `preview` text to extract:
+  - 🔴 count of items needing direct action
+  - 🟡 count of items waiting on external
+  - Full PENDING section items (up to 12 lines)
+  - PENDING CRONS section (up next 8 scheduled jobs)
+- Added to `/help` output
+- Briefing API returns `preview` field (not `text`) — fixed parsing to use correct field
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 129309, ~2h15min uptime)
+- Git committed: `39952a0` (panel drag-and-drop)
+- `/pending` now live in command bar
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Morning briefing quality** — content correct; formatting already improved
+4. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+
+---
+
+## Session Log — 2026-04-27 09:20 UTC
+
+### Changes Made
+
+**Panel Drag-and-Drop Reorder (NEW)**
+
+- 4 left-column panels now draggable: Status, Sessions, Cron Jobs, Briefing
+- Drag handle (&#9776;) appears on header hover; grab and drag to reorder
+- CSS: `.dragging` opacity state, `.drag-over` accent border
+- HTML5 native drag-and-drop API — no dependencies
+- `PANEL_IDS` canonical array updated on drop; `applyOrder()` moves header+body DOM nodes together
+- Order persisted to `localStorage` key `mc_panel_order`, survives page reloads
+- `initPanelDnD()` called at boot, runs before SSE connects
+
+### Current State
+- Service running on port 8420 via systemd ✅
+- Git committed + pushed: `39952a0` ✅
+- All endpoints verified: /api/ping ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph type coloring** — Hermes entity store too sparse (all "unknown" type)
+3. **Morning briefing quality** — content correct; formatting already improved
+4. **Panel drag-and-drop reorder** — bring back from old version ✅ (DONE this session)
+5. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+
+---
+
 ## Session Log — 2026-04-27 08:15 UTC
 
 ### Fix: Morning Briefing Panel

@@ -1680,6 +1680,7 @@ $('cmd-input').addEventListener('keydown', async e => {
       '  /clear, /clr     Clear terminal\n' +
       '  /cron            List cron jobs\n' +
       '  /sessions        List sessions\n' +
+      '  /pending         Show pending items from morning briefing\n' +
       '  /graph           Switch to knowledge graph\n' +
       '  Any other text   Ask Hermes AI', ''
     );
@@ -1690,6 +1691,49 @@ $('cmd-input').addEventListener('keydown', async e => {
     addTermCmd(text);
     addTermResponse(_cronJobs.length === 0 ? 'No cron jobs.' :
       _cronJobs.map(j => `${j.name} [${j.schedule}] — ${j.last_status || 'never'} ${j.next_run ? '→ ' + j.next_run.slice(11,16) : ''}`).join('\n'), '');
+    input.value = '';
+    return;
+  }
+  if (text === '/pending') {
+    addTermCmd(text);
+    const d = await api('/api/briefing');
+    if (!d.ok || !d.data) { addTermResponse('Could not load briefing.', ''); input.value = ''; return; }
+    const b = d.data;
+    const mb = b.morning_briefing || {};
+    const crons = b.pending_crons || [];
+
+    // Parse counts from preview text (e.g. "🔴 0 items" / "🟡 1 item")
+    const preview = mb.preview || '';
+    const countMatch = preview.match(/🔴\s*(\d+)\s*items?\s*need\s*you/);
+    const waitMatch = preview.match(/🟡\s*(\d+)\s*item.*waiting/);
+    const pendingCount = countMatch ? parseInt(countMatch[1]) : 0;
+    const waitingCount = waitMatch ? parseInt(waitMatch[1]) : 0;
+
+    // Extract PENDING section from briefing preview
+    let pendingLines = [];
+    if (preview) {
+      const lines = preview.split('\n');
+      let inPending = false;
+      for (const line of lines) {
+        if (/^\*\*PENDING[:\*]/.test(line)) { inPending = true; continue; }
+        if (inPending && /^\*\*[A-Z]/.test(line)) break;
+        if (inPending && line.trim()) pendingLines.push(line.trim());
+      }
+    }
+
+    let out = [];
+    out.push(`🔴 ${pendingCount} need you  ·  🟡 ${waitingCount} waiting`);
+    if (pendingLines.length > 0) {
+      out.push('');
+      pendingLines.slice(0, 12).forEach(l => out.push(l));
+    }
+    if (crons.length > 0) {
+      out.push('\nPENDING CRONS:');
+      crons.slice(0, 8).forEach(c => out.push(`${c.name} [${c.schedule || '—'}]`));
+    }
+    if (pendingCount === 0 && waitingCount === 0 && crons.length === 0) out.push('All clear!');
+
+    addTermResponse(out.join('\n'), '');
     input.value = '';
     return;
   }
