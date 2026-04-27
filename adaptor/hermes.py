@@ -354,10 +354,13 @@ class HermesAdaptor:
             cron_sessions.sort(key=lambda x: x.stat().st_mtime, reverse=True)
 
             # Look for morning briefing in recent cron sessions.
-            # Scan up to 120 to handle heavy cron churn (new sessions every 5 min).
-            # Morning briefing (21:00 UTC) typically sits at position 50-90 due to
-            # other crons firing every 5 min between 21:00 and the morning scan.
-            for session_file in cron_sessions[:120]:
+            # Scan up to 300 to handle heavy cron churn:
+            # - Maxi Heartbeat fires every 15 min (~64 new sessions/day)
+            # - mission-control-iterate fires hourly (~17 new sessions/day)
+            # - Other crons fire every 5 min (~288 new sessions/day)
+            # At 14:00 AEST the morning briefing (21:00 UTC prior day) sits at
+            # position ~125 out of ~345 total cron sessions. 300 covers all cases.
+            for session_file in cron_sessions[:300]:
                 try:
                     with session_file.open() as f:
                         data = json.load(f)
