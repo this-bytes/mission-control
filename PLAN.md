@@ -1772,4 +1772,31 @@ Result: **11 real nodes** (system:1, agent:6, credential:1, task:2, service:1), 
 
 ---
 
-## Session Log — 2026-04-28 05:33 UTC
+## Session Log — 2026-04-28 11:30 UTC
+
+### Changes Made
+
+**Graph Panel Bug Fixes (2 bugs)**
+
+**Bug 1 — Focus dimming never worked:**
+Root cause: `Graph.draw()` built a `connected` Set of node **objects**, then checked `connected.has(e.source.id)` — comparing string IDs against object references, which always returned `false`. All non-connected nodes were drawn at full brightness regardless of focus state.
+Fix: Renamed to `connectedNodes` and stored node **IDs** (strings) instead of objects.
+
+**Bug 2 — Concept node detail panel blank:**
+Root cause: `renderEntityDetail(entityId)` looked up the entity in `_graph.nodes` (the rendered graph, which filters out concept nodes). When you clicked a concept node, it wasn't found → function returned early → blank panel.
+Fix: Added fallback that checks `_graphData.nodes` (all nodes including concept). Created `renderEntityDetailFallback()` to render detail for nodes not in the rendered graph — shows name, type, and all connections.
+
+### Current State
+- Service running on port 8420 via systemd ✅ (fresh restart)
+- Git committed + pushed: `654edd8` ✅
+- Graph: focus dimming now works when a node is selected
+- Concept nodes (e.g. "you've just made up some things") now show detail panel with connections when clicked
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Homelab network (10.87.1.0/24)** — NOT CODE: server has no route to that subnet
+3. **Dependabot vulnerabilities** — 3 moderate on this-bytes/mission-control (run `npm audit fix` or `pip audit`)
+4. **Token usage display** — sessions.json has token fields but they're all 0; could read from session .jsonl files
+5. **Panel drag-and-drop reorder** — customize dashboard layout
