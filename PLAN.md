@@ -195,6 +195,41 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-28 10:20 UTC
+
+### Root Cause: Orphaned Root Process Holding Port 8420
+
+**Problem:** Service crash-looping for ~18 hours (restart counter reached 1628+). Every restart attempt: `Errno 98: address already in use`.
+
+**Root cause (Phase 1):**
+1. A previous cron run of `run.py` started at 07:03 (PID 254513, running as root) grabbed port 8420 and never released it
+2. The orphaned process was immune to `fuser -k` from the systemd unit's `ExecStartPre` because the port wasn't actually released between systemd's kill attempt and its restart cycle — the old process kept re-binding instantly
+3. The orphaned socket became an "orphaned kernel socket" — present in `/proc/net/tcp` with inode but unkillable (no owning process visible in `ss -tlnp`)
+4. A second orphan from the same cron session (PID 287158, root) appeared later — same pattern
+
+**Fix:** Identified the root PIDs via `ps aux | grep run.py` and killed them with `sudo kill -9`. Systemd then successfully restarted the service on a clean port.
+
+**Also fixed:** The `renderBriefing()` parser now handles:
+- Briefing title line (e.g. `🌅 MORNING BRIEF — 2026-04-28`) → renders as styled `.briefing-title` div
+- `---` HR separators → renders as `.briefing-hr` dividers
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 290683, uptime ~1min)
+- All 10 API endpoints verified healthy ✅
+- Briefing panel: title + HR now render correctly ✅
+- Restart counter reset to 0 ✅
+- Git: uncommitted changes pending ✅
+
+### No Blockers
+
+### Next Sprint Candidates
+1. **GitHub PR workflow** — blocked on GitHub auth credentials (no GH_TOKEN, no GitHub in auth.json)
+2. **Memory graph** — 18/27 nodes still "concept" type (conversational snippets); Hermes entity_type is NULL
+3. **Homelab network fix** — all hosts unreachable (10.87.1.0/24 no route), not a code issue
+4. **Persistent orphaned process prevention** — root-owned cron runs of run.py leave orphans; consider a startup guard that kills any non-systemd run.py before starting
+
+---
+
 ## Session Log — 2026-04-28 07:00 UTC
 
 ### Changes Made

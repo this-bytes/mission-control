@@ -314,6 +314,7 @@
     .briefing-section-label { font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; font-size: 9px; color: var(--muted); margin-bottom: 3px; }
     .briefing-item { display: flex; gap: 6px; margin-bottom: 2px; }
     .briefing-item-dot { flex-shrink: 0; margin-top: 2px; }
+    .briefing-title { font-size: 13px; font-weight: 700; color: var(--cyan); margin-bottom: 8px; letter-spacing: 0.04em; }
     .briefing-hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
     .homelab-alert { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); border-radius: 4px; padding: 8px 10px; margin-top: 6px; font-size: 11px; }
     .homelab-alert-title { color: var(--red); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; font-size: 9px; margin-bottom: 4px; }
@@ -2260,9 +2261,23 @@ async function loadBriefing() {
       sectionItems = [];
     }
 
+    // First non-empty line is the briefing title (e.g. "🌅 MORNING BRIEF — 2026-04-28")
+    let titleLine = null;
+    for (const l of lines) {
+      if (l.trim()) { titleLine = l.trim(); break; }
+    }
+    if (titleLine && !titleLine.startsWith('**')) {
+      html += `<div class="briefing-title">${esc(titleLine)}</div>`;
+    }
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
+      // Skip title line (already rendered above)
+      if (line === titleLine) continue;
+
+      // Horizontal rule
+      if (line === '---') { html += '<div class="briefing-hr"></div>'; continue; }
 
       // Detect homelab alert block
       if (line.startsWith('**HOMELAB:**') || (inHomelabAlert && !line.startsWith('**') && !line.startsWith('- **') && !line.startsWith('**'))) {
