@@ -1189,6 +1189,18 @@
     <span class="gauge-label">Events</span>
     <span class="gauge-value amber" id="g-events">0</span>
   </div>
+  <div class="metric-gauge">
+    <span class="gauge-label">CPU</span>
+    <span class="gauge-value" id="g-cpu">—</span>
+  </div>
+  <div class="metric-gauge">
+    <span class="gauge-label">MEM</span>
+    <span class="gauge-value" id="g-mem">—</span>
+  </div>
+  <div class="metric-gauge">
+    <span class="gauge-label">DISK</span>
+    <span class="gauge-value" id="g-disk">—</span>
+  </div>
   <div class="topbar-spacer"></div>
   <div style="display:flex;align-items:center;margin-right:16px;">
     <div class="conn-dot" id="conn-dot"></div>
@@ -3245,6 +3257,24 @@ async function loadSystemInfo() {
 
   // Mem GB
   $('s-mem-gb').textContent = `${s.memory_used_gb || '?'} / ${s.memory_total_gb || '?'} GB`;
+
+  // Topbar gauges — CPU
+  const cpuVal = s.cpu_percent || 0;
+  const gcpu = $('g-cpu');
+  gcpu.textContent = cpuVal.toFixed(0) + '%';
+  gcpu.className = 'gauge-value' + (cpuVal >= 85 ? ' red' : cpuVal >= 70 ? ' amber' : '');
+
+  // Topbar gauges — MEM
+  const memVal = s.memory_percent || 0;
+  const gmem = $('g-mem');
+  gmem.textContent = memVal.toFixed(0) + '%';
+  gmem.className = 'gauge-value' + (memVal >= 85 ? ' red' : memVal >= 70 ? ' amber' : '');
+
+  // Topbar gauges — DISK (high priority, disk at 81%)
+  const diskVal = s.disk_percent || 0;
+  const gdisk = $('g-disk');
+  gdisk.textContent = diskVal.toFixed(0) + '%';
+  gdisk.className = 'gauge-value' + (diskVal >= 85 ? ' red' : diskVal >= 70 ? ' amber' : '');
 }
 
 /* ══════════════════════════════════════════════════════════════
