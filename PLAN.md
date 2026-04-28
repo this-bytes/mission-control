@@ -195,6 +195,35 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-29 08:45 UTC
+
+### Changes Made
+
+**Paperclip Issues Tab: Load on Tab Switch (BUG FIX)**
+
+Problem: The Issues tab (Paperclip) always showed "Loading..." when navigating directly to it via the tab bar. Only clicking the filter buttons (All/Blocked/Todo/Active) would trigger `loadIssues()`.
+
+Root cause: `switchTab('paperclip')` had no handler to load issues — unlike `switchTab('graph')` (calls `resizeCanvas()`), `switchTab('links')` (calls `loadLinks()`), and `switchTab('crons')` (calls `loadCronIntel()`).
+
+Fix: Added `if (name === 'paperclip') loadIssues(_pcFilter || '')` to `switchTab()` — same lazy-load pattern as other tabs.
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 433813, uptime ~1min)
+- Git committed + pushed: `4c0cc10` ✅
+- All API endpoints healthy ✅
+- Paperclip Issues tab now loads data when tab is first opened ✅
+
+### No Blockers
+
+### Open Items (Not Blockers)
+1. **GitHub PR workflow** — blocked on GitHub auth credentials
+2. **Memory graph** — 18/27 nodes "concept" type (Hermes entity_type NULL)
+3. **Homelab network** — 10.87.1.0/24 unreachable (infra issue, not code)
+4. **Disk cleanup** — 84% disk usage (actionable but not urgent)
+5. **Skills panel** — 111 skills loaded, category dropdown working, skill invocation wired to command bar with `!` prefix
+
+---
+
 ## Session Log — 2026-04-28 17:20 UTC
 
 ### Changes Made
