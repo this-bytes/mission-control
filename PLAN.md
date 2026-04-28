@@ -195,6 +195,46 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-28 17:20 UTC
+
+### Changes Made
+
+**Briefing: Upcoming Cron Timeline with Live Countdown Timers (NEW)**
+
+Problem: The Briefing panel showed pending cron jobs but only as a list with no sense of *when* they would fire. You had to mentally calculate the countdown from `next_run` timestamps yourself.
+
+Fix — 3-part implementation:
+
+1. **HTML**: Added `pending-crons` section to the Briefing panel body, sitting below the briefing text/meta. Has a `pending-crons-header` (e.g. "NEXT 6 CRONS") and `pending-crons-list` container.
+
+2. **`loadBriefing()`**: After rendering briefing text, builds `upcoming` array from `pending_crons` (filtered to those with `next_run`, capped at 6). Renders each as a `.cron-timeline-row` with name + countdown span. Removes redundant "N crons" text from meta line (was duplicative with the new timeline header).
+
+3. **`updateCronCountdowns()`**: New JS function that reads `data-next` attributes from all `.cron-timeline-row` elements and computes live countdowns:
+   - `>24h`: shows `Xd Xh`
+   - `1-24h`: shows `Xh XXm`
+   - `1-60min`: shows `Xm XXs`
+   - `<60s`: shows `Xs` in red (urgent)
+   - `≤0`: shows `now` in green
+   - Reschedules itself every 15s
+
+CSS: `.cron-timeline-row` flex layout with hover highlight; `.cron-tl-countdown` in amber (tabular-nums for stable width).
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID fresh, uptime ~1min)
+- Git committed + pushed: `7dca25f` ✅
+- Briefing panel now shows next 6 crons with live countdown timers ✅
+- All 13 API endpoints verified healthy ✅
+
+### No Blockers
+
+### Open Items (Not Blockers)
+1. **GitHub PR workflow** — blocked on GitHub auth credentials
+2. **Memory graph** — 18/27 nodes "concept" type (Hermes entity_type NULL)
+3. **Homelab network** — 10.87.1.0/24 unreachable (infra issue, not code)
+4. **Disk cleanup** — 84% disk usage (actionable but not urgent)
+
+---
+
 ## Session Log — 2026-04-28 06:44 UTC
 
 ### Root Cause: Orphaned Socket Crash Loop (Restart Counter 2204)
