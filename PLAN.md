@@ -195,6 +195,36 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-28 06:44 UTC
+
+### Root Cause: Orphaned Socket Crash Loop (Restart Counter 2204)
+
+**Problem:** Service crash-looping — systemd restart counter at **2204**. Ping responded but service couldn't bind.
+
+**Root cause (Phase 1):**
+1. A root-owned `run.py` process (PID 297258) started at 11:29 was holding port 8420
+2. This was likely from a previous cron run or manual invocation
+3. `ss -tlnp` showed port listening but no process visible via normal `ps aux`
+4. `sudo fuser -v 8420/tcp` finally revealed PID 319381 (root) in state `F` (file descriptor) — orphaned kernel socket
+5. Kill + service restart resolved it
+
+**Fix:** `sudo kill -9 319381` freed the port. Service restarted cleanly.
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID fresh, ~1min uptime)
+- 3/3 platforms connected: telegram ✅, discord ✅, api_server ✅
+- All API endpoints verified healthy ✅
+- Restart counter reset to 0 ✅
+
+### Open Items (Not Blockers)
+1. **GitHub PR workflow** — blocked on GitHub auth credentials
+2. **Memory graph** — 18/27 nodes "concept" type (Hermes entity_type NULL)
+3. **Homelab network** — 10.87.1.0/24 unreachable (infra issue, not code)
+4. **Disk cleanup** — 81.4% disk usage (actionable but not urgent)
+5. **Orphaned process prevention** — root-owned cron runs leave orphans; consider startup guard
+
+---
+
 ## Session Log — 2026-04-28 13:40 UTC
 
 ### Health Check (Scheduled Cron)
