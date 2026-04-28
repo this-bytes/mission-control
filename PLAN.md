@@ -167,11 +167,12 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 - **v2 added:** Command bar calls Hermes (real AI responses), cron job "▶ Run now" buttons
 
 ### ✅ Layer 2 — systemd Service (COMPLETE)
-- **File:** `mission-control.service`
-- **Installed to:** `/etc/systemd/system/mission-control.service`
-- **Status:** `systemctl enable mission-control` — survives reboots
+- **File:** `mission-control.service` (user-level, not system-wide)
+- **Installed to:** `~/.config/systemd/user/mission-control.service` (symlink to repo file)
+- **Status:** `systemctl --user enable mission-control` — survives reboots
 - **Auto-restart:** on crash (Restart=always, RestartSec=5)
 - **Python venv:** `/home/localadmin/mission-control/venv`
+- **Invocation:** `systemctl --user status mission-control` / `journalctl --user -u mission-control -f`
 
 ### File Structure (as-built)
 ```
@@ -1920,4 +1921,41 @@ Fix: Added fallback that checks `_graphData.nodes` (all nodes including concept)
 2. **Homelab network (10.87.1.0/24)** — NOT CODE: server has no route to that subnet
 3. **Dependabot vulnerabilities** — 3 moderate on this-bytes/mission-control (run `npm audit fix` or `pip audit`)
 4. **Token usage display** — sessions.json has token fields but they're all 0; could read from session .jsonl files
-5. **Panel drag-and-drop reorder** — customize dashboard layout
+
+---
+
+## Session Log — 2026-04-29 09:50 UTC
+
+### Health Check — All Systems Nominal
+
+**Status:** No changes made — scheduled verification pass.
+
+**Confirmed operational:**
+- Service uptime: ~1h 3min (PID 433813, no restarts)
+- 3/3 platforms connected: telegram ✅, discord ✅, api_server ✅
+- All 11 API endpoints verified healthy:
+  - `/api/ping` ✅
+  - `/api/status` ✅ (Hermes 0.11.0, gateway running PID 425770)
+  - `/api/cron-jobs` ✅
+  - `/api/context` ✅
+  - `/api/briefing` ✅
+  - `/api/cron-intel` ✅ (55 recommendations, coverage analysis)
+  - `/api/metrics` ✅ (uptime tracked)
+  - `/api/system-info` ✅
+  - `/api/sessions` ✅
+  - `/api/graph` ✅ (knowledge graph)
+  - `/api/paperclip/issues` ✅
+  - `/api/skills-catalog` ✅ (111 skills)
+- SSE stream `/events` ✅
+- Command bar (POST `/api/command`) ✅
+- systemd user service installed at `~/.config/systemd/user/mission-control.service`
+- Disk at 98.8% — actionable warning (see open items)
+
+### No Blockers
+
+### Open Items (Not Blockers)
+1. **GitHub PR workflow** — blocked on GitHub auth credentials
+2. **Memory graph** — 18/27 nodes "concept" type (entity_type NULL in Hermes)
+3. **Homelab network (10.87.1.0/24)** — NOT CODE: server has no route to that subnet
+4. **Disk at 98.8%** — 29.6GB used / 31.3GB total; actionable cleanup needed
+5. **Token usage display** — session .jsonl files not read for per-session token counts
