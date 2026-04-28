@@ -2599,17 +2599,18 @@ class Graph {
       degree[e.target.id] = (degree[e.target.id] || 0) + 1;
     }
 
-    // Connected set for focus dimming
-    const connected = new Set([focusNodeId]);
+    // Connected set for focus dimming (node objects, not IDs)
+    const connectedNodes = new Set();
     if (focusNodeId) {
+      connectedNodes.add(focusNodeId);
       for (const e of this.edges) {
-        if (e.source.id === focusNodeId) connected.add(e.target.id);
-        if (e.target.id === focusNodeId) connected.add(e.source.id);
+        if (e.source.id === focusNodeId) connectedNodes.add(e.target.id);
+        if (e.target.id === focusNodeId) connectedNodes.add(e.source.id);
       }
     }
 
     for (const e of this.edges) {
-      const dim = focusNodeId && !connected.has(e.source.id) && !connected.has(e.target.id);
+      const dim = focusNodeId && !connectedNodes.has(e.source.id) && !connectedNodes.has(e.target.id);
       ctx.beginPath();
       ctx.moveTo(e.source.x, e.source.y);
       ctx.lineTo(e.target.x, e.target.y);
@@ -2727,9 +2728,16 @@ function renderEntityDetail(entityId) {
     detail.innerHTML = '<span class="detail-empty">Click any node to explore connections</span>';
     return;
   }
+  // Use _graph.nodes (rendered real nodes) first, fall back to _graphData.nodes (all nodes including concept)
   const entity = _graph ? _graph.nodes.find(n => n.id === entityId) : null;
-  if (!entity) return;
-  _selectedEntity = entity;
+  if (!entity) {
+    // Try _graphData for concept nodes not in rendered graph
+    const allNodes = _graphData ? _graphData.nodes : [];
+    const fallback = allNodes.find(n => n.id === entityId);
+    if (!fallback) return;
+    renderEntityDetailFallback(fallback, entityId);
+    return;
+  }
   const edges = (_graphData.edges || []).filter(e => e.source === entityId || e.target === entityId);
   let html = `<div class="detail-entity">${esc(entity.name)}</div>`;
   html += `<div class="detail-type">${esc(entity.type || 'concept')} · ${edges.length} connection${edges.length !== 1 ? 's' : ''}</div>`;
@@ -2757,6 +2765,29 @@ function renderEntityDetail(entityId) {
       html += `<span class="detail-rel-label clickable-entity" data-entity-id="${esc(other)}">${esc(label)}</span>`;
       html += `</div>`;
     }
+  }
+  if (edges.length === 0) html += `<div class="detail-empty" style="margin-top:6px;">No connections yet</div>`;
+  detail.innerHTML = html;
+}
+
+// Fallback renderer for concept nodes not in the rendered graph
+function renderEntityDetailFallback(entity, entityId) {
+  const detail = $('graph-detail');
+  _selectedEntity = entity;
+  const edges = (_graphData.edges || []).filter(e => e.source === entityId || e.target === entityId);
+  let html = `<div class="detail-entity">${esc(entity.name)}</div>`;
+  html += `<div class="detail-type">${esc(entity.type || 'concept')} · ${edges.length} connection${edges.length !== 1 ? 's' : ''}</div>`;
+  for (const edge of edges.slice(0, 12)) {
+    const other = edge.source === entityId ? edge.target : edge.source;
+    const otherNode = _graph ? _graph.nodes.find(n => n.id === other) : null;
+    // For concept nodes, the "other" node might also not be in rendered graph
+    const label = otherNode ? otherNode.name : (otherNode === null && _graphData ? (_graphData.nodes.find(n => n.id === other) || {name: other}).name : other);
+    const preview = edge.fact_preview || '';
+    html += `<div class="detail-fact">`;
+    html += `<span class="detail-rel">${esc(edge.label || '→')} </span>`;
+    html += `<span class="detail-rel-label clickable-entity" data-entity-id="${esc(other)}">${esc(label)}</span>`;
+    html += `</div>`;
+    if (preview) html += `<div class="detail-preview">${esc(preview.slice(0, 120))}${preview.length > 120 ? '…' : ''}</div>`;
   }
   if (edges.length === 0) html += `<div class="detail-empty" style="margin-top:6px;">No connections yet</div>`;
   detail.innerHTML = html;
