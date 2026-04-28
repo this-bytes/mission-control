@@ -315,6 +315,14 @@
     .briefing-item { display: flex; gap: 6px; margin-bottom: 2px; }
     .briefing-item-dot { flex-shrink: 0; margin-top: 2px; }
     .briefing-title { font-size: 13px; font-weight: 700; color: var(--cyan); margin-bottom: 8px; letter-spacing: 0.04em; }
+    .briefing-hr { border-top: 1px solid var(--border); margin: 8px 0; }
+    /* ── Cron Timeline ───────────────────────────────────── */
+    .cron-timeline-row { display: flex; align-items: center; gap: 6px; padding: 3px 12px; font-size: 10px; }
+    .cron-timeline-row:hover { background: var(--surface2); }
+    .cron-tl-icon { flex-shrink: 0; width: 10px; text-align: center; }
+    .cron-tl-name { flex: 1; color: var(--text-bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cron-tl-countdown { font-size: 9px; color: var(--amber); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #pending-crons-list { display: flex; flex-direction: column; gap: 1px; }
     .briefing-hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
     .homelab-alert { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); border-radius: 4px; padding: 8px 10px; margin-top: 6px; font-size: 11px; }
     .homelab-alert-title { color: var(--red); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; font-size: 9px; margin-bottom: 4px; }
@@ -1268,6 +1276,10 @@
     <div class="sec-body" id="briefing-body" style="overflow-y:auto;">
       <div id="briefing-content">Loading...</div>
       <div id="briefing-meta"></div>
+      <div id="pending-crons" style="border-top: 1px solid var(--border); margin-top: 8px; padding-top: 6px; display: none;">
+        <div id="pending-crons-header" style="font-size:9px; letter-spacing:0.1em; color:var(--muted); margin-bottom:4px;"></div>
+        <div id="pending-crons-list"></div>
+      </div>
     </div>
 
   </div>
@@ -2351,15 +2363,77 @@ async function loadBriefing() {
     content.innerHTML = renderBriefing(mb.preview);
     const sid = mb.session_id || '';
     const m = sid.match(/(\d{8})_(\d{6})/);
-    if (m) meta.textContent = `Generated ${m[1].slice(0,4)}-${m[1].slice(4,6)}-${m[1].slice(6,8)} ${m[2].slice(0,2)}:${m[2].slice(2,4)} UTC · ${crons.length} crons`;
-    else meta.textContent = `${crons.length} crons pending`;
+    if (m) meta.textContent = `Generated ${m[1].slice(0,4)}-${m[1].slice(4,6)}-${m[1].slice(6,8)} ${m[2].slice(0,2)}:${m[2].slice(2,4)} UTC`;
+    else meta.textContent = '';
   } else if (crons.length) {
     content.innerHTML = '<div class="briefing-section-label">Upcoming Crons</div>' +
       crons.slice(0, 4).map(c => `<div class="briefing-item"><span class="briefing-item-dot">⏰</span><span>${esc(c.name)}</span></div>`).join('');
-    meta.textContent = `${crons.length} jobs in queue`;
+    meta.textContent = '';
   } else {
     content.textContent = 'No briefing or crons';
+    meta.textContent = '';
   }
+
+  // Upcoming cron timeline — show next 6 jobs with countdown timers
+  const upcoming = crons.filter(c => c.next_run).slice(0, 6);
+  const timeline = $('pending-crons');
+  const timelineList = $('pending-crons-list');
+  const timelineHeader = $('pending-crons-header');
+  if (upcoming.length > 0) {
+    timeline.style.display = 'block';
+    timelineHeader.textContent = `NEXT ${upcoming.length} CRONS`;
+    timelineList.innerHTML = upcoming.map(c => {
+      const next = c.next_run ? new Date(c.next_run) : null;
+      const name = esc(c.name.length > 22 ? c.name.slice(0, 22) + '…' : c.name);
+      return `<div class="cron-timeline-row" data-next="${c.next_run || ''}" data-name="${name}">
+        <span class="cron-tl-icon">○</span>
+        <span class="cron-tl-name">${name}</span>
+        <span class="cron-tl-countdown" id="cd-${c.id.slice(0,8)}">—</span>
+      </div>`;
+    }).join('');
+    // Kick off live countdown updates
+    updateCronCountdowns();
+  } else {
+    timeline.style.display = 'none';
+  }
+}
+
+// ── Cron Countdown Timer ──────────────────────────────────────────────────────
+let _cronCountdownTimer = null;
+
+function updateCronCountdowns() {
+  // Update all countdown elements with live time remaining
+  document.querySelectorAll('.cron-timeline-row[data-next]').forEach(row => {
+    const nextStr = row.getAttribute('data-next');
+    const cdEl = row.querySelector('.cron-tl-countdown');
+    if (!cdEl || !nextStr) return;
+    const next = new Date(nextStr);
+    if (!next || isNaN(next.getTime())) { cdEl.textContent = '—'; return; }
+    const diff = next - Date.now();
+    if (diff <= 0) {
+      cdEl.textContent = 'now';
+      cdEl.style.color = 'var(--green)';
+    } else {
+      const totalSec = Math.floor(diff / 1000);
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      if (h > 24) {
+        const d = Math.floor(h / 24);
+        cdEl.textContent = `${d}d ${h % 24}h`;
+      } else if (h > 0) {
+        cdEl.textContent = `${h}h ${m.toString().padStart(2, '0')}m`;
+      } else if (m > 0) {
+        cdEl.textContent = `${m}m ${s.toString().padStart(2, '0')}s`;
+      } else {
+        cdEl.textContent = `${s}s`;
+        cdEl.style.color = diff < 60000 ? 'var(--red)' : 'var(--amber)';
+      }
+    }
+  });
+  // Reschedule in 15s (countdown is coarse enough)
+  if (_cronCountdownTimer) clearTimeout(_cronCountdownTimer);
+  _cronCountdownTimer = setTimeout(updateCronCountdowns, 15000);
 }
 
 /* ══════════════════════════════════════════════════════════════
