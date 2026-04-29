@@ -196,6 +196,43 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-29 12:10 UTC
+
+### Changes Made
+
+**Security: XSS Fix — CI Gap/Rec "Create Cron" Buttons**
+
+Root cause (Phase 1): `JSON.stringify(gap).replace(/"/g, '&quot;')` was used to embed objects in `onclick` handlers via string interpolation. This is insufficient because:
+1. `replace(/"/g, '&quot;')` only escapes double-quotes — backslashes and unicode chars in JSON survive
+2. The result is still a JS string literal in an `onclick` attribute, allowing attribute breakout
+
+Fix — 2-part:
+1. **`esc()` function**: Added `.replace(/"/g, '&quot;')` to escape double-quotes. Now used for all attribute-safe HTML encoding (not just `<` and `>`).
+2. **Data attribute pattern**: `data-gap="${esc(JSON.stringify(gap))}"` + `onclick="openCronModalFromGap(JSON.parse(this.dataset.gap))"`. `esc()` prevents attribute breakout; `JSON.parse()` safely reconstructs the object server-side.
+
+Fixed in two places:
+- `ciRenderGaps()`: "Create Cron" button (gap object → `openCronModalFromGap`)
+- `ciRenderRecs()`: "+ Create" button (rec object → `openCronModalFromRec`)
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 447756, uptime ~1min)
+- Git committed + pushed: `8487c5e` ✅
+- All 7 API endpoints verified healthy ✅
+- Graph: 34 nodes, 12 edges ✅ (was returning 0 in a prior check — service had warmed up)
+- Briefing: from 2026-04-28 (service restarted ~3h ago, stale but correct)
+- Memory: 65% (5.1/7.9 GB), Disk: 91% (27.4/31.3 GB) — disk at 91% is high
+
+### No Blockers
+
+### Open Items (Not Blockers)
+1. **GitHub PR workflow** — blocked on GitHub auth credentials
+2. **Memory graph** — 18/27 nodes "concept" type (Hermes entity_type NULL) — type inference helps but most entities are conversational snippets
+3. **Homelab network** — 10.87.1.0/24 unreachable (infra issue, not code)
+4. **Disk at 91%** — 27.4/31.3 GB used; recurring journal accumulation issue
+5. **Briefing stale** — from 2026-04-28 (service was restarted this morning, briefing cron fires at 21:00 AEST)
+
+---
+
 ## Session Log — 2026-04-29 08:45 UTC
 
 ### Changes Made
