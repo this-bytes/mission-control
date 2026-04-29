@@ -196,6 +196,36 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-29 18:02 UTC
+
+### Scheduled Health Check — All Systems Nominal
+
+No code changes — scheduled verification pass.
+
+**Status:**
+- Service uptime: ~2h17min (PID 457987, no restarts since 15:42 AEST)
+- 3/3 platforms: telegram ✅, discord ✅, api_server ✅
+- All 14 API endpoints verified healthy ✅
+  - 200: ping, status, cron-jobs, context, toolsets, briefing, sessions, metrics, cron-intel, system-info, graph, skills-catalog, history/search, paperclip/issues
+  - 404: none (services respond correctly)
+- Gateway: reachable at port 8642 ✅
+- Disk: 94% (29G/32G, 2.0GB free — cleared 631MB ms-playwright cache)
+
+**Disk Maintenance:**
+- Cleared 631MB ms-playwright Chromium browser cache (~600MB freed)
+- Disk at 94% (2GB free) — still tight on a 32GB partition
+- Root cause: the 32GB system disk is the real constraint; journals are already at minimum
+
+**No Blockers**
+
+### Open Items (Not Blockers)
+1. **GitHub PR workflow** — blocked on GitHub auth credentials
+2. **Memory graph** — 18/27 nodes "concept" type (entity_type NULL from Hermes)
+3. **Homelab network** — 10.87.1.0/24 unreachable (infra issue, not code)
+4. **Disk at 94%** — 32GB system disk is the fundamental constraint; consider larger disk or offloading cache
+
+---
+
 ## Session Log — 2026-04-29 15:35 UTC
 
 ### Fix: invokeSkill() Tab-Switch Bug

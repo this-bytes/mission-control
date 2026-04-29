@@ -302,6 +302,70 @@ async def get_graph():
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 
+# ─── GitHub PRs ──────────────────────────────────────────────────────────────
+@app.get("/api/github/prs")
+async def get_github_prs():
+    """Open pull requests for this-bytes/mission-control via gh CLI."""
+    try:
+        import subprocess, json as _json
+        result = subprocess.run(
+            ["gh", "pr", "list", "--state=open", "--json",
+             "number,title,state,url,author,labels,createdAt,updatedAt,mergeable,statusCheckRollup",
+             "--repo=this-bytes/mission-control"],
+            capture_output=True, text=True, timeout=15
+        )
+        if result.returncode != 0:
+            return JSONResponse({"ok": False, "error": result.stderr.strip()}, status_code=502)
+        prs = _json.loads(result.stdout)
+        enriched = []
+        for pr in prs:
+            # Compute age
+            from datetime import datetime, timezone
+            created = datetime.fromisoformat(pr["createdAt"].replace("Z", "+00:00"))
+            age_days = (datetime.now(timezone.utc) - created).days
+            age = f"{age_days}d ago" if age_days > 0 else "today"
+            # Check status
+            checks = pr.get("statusCheckRollup") or []
+            all_passed = all(c["status"] == "PASSED" for c in checks) if checks else None
+            can_merge = pr.get("mergeable") == "MERGEABLE" and all_passed is not False
+            author_login = pr.get("author", {}).get("login", "unknown") if pr.get("author") else "unknown"
+            enriched.append({
+                "number": pr["number"],
+                "title": pr["title"],
+                "url": pr["url"],
+                "labels": pr.get("labels") or [],
+                "author": author_login,
+                "age": age,
+                "checks_passed": all_passed,
+                "mergeable": pr.get("mergeable"),
+                "sha": pr.get("head", {}).get("sha", ""),
+                "can_merge": can_merge,
+            })
+        return {"ok": True, "data": enriched}
+    except subprocess.TimeoutExpired:
+        return JSONResponse({"ok": False, "error": "gh CLI timed out"}, status_code=504)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@app.post("/api/github/prs/{pr_number}/merge")
+async def merge_pr(pr_number: int):
+    """Merge a pull request via gh CLI."""
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["gh", "pr", "merge", str(pr_number), "--admin", "--squash"],
+            capture_output=True, text=True, timeout=30
+        )
+        if result.returncode != 0:
+            return JSONResponse({"ok": False, "error": result.stderr.strip() or result.stdout.strip()}, status_code=400)
+        return {"ok": True, "data": {"merged": pr_number, "message": result.stdout.strip()}}
+    except subprocess.TimeoutExpired:
+        return JSONResponse({"ok": False, "error": "gh CLI timed out"}, status_code=504)
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
 @app.get("/api/skills-catalog")
 async def get_skills_catalog():
     """Skills catalog: all available skills with triggers + descriptions."""
