@@ -196,6 +196,32 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-29 14:27 UTC
+
+### Fix: History Tab — switchTab Handler Missing
+
+**Problem:** The "History" tab existed in the UI (panel + search bar) but `switchTab('history')` was not handled — the tab click did nothing.
+
+**Root cause:** `switchTab()` had handlers for `graph`, `links`, `crons`, and `paperclip` but not `history`. The History panel HTML and `doSearch()` JS function were fully implemented — just not wired into tab navigation.
+
+**Fix:** Added `if (name === 'history') { $('search-input').focus(); return; }` to `switchTab()`. Focus-on-open is the right UX — search is the primary action in that panel.
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID 447756, uptime ~2h11min)
+- Git committed + pushed: `3a5670e` ✅
+- All API endpoints verified: ping ✅, status ✅ (3/3 platforms), history/search ✅
+- History tab now responds to tab click and auto-focuses search input ✅
+
+### No Blockers
+
+### Open Items (Not Blockers)
+1. **GitHub PR workflow** — blocked on GitHub auth credentials
+2. **Memory graph** — 18/27 nodes "concept" type (entity_type NULL from Hermes)
+3. **Homelab network** — 10.87.1.0/24 unreachable (infra issue, not code)
+4. **Disk at 88%** — 27.6/31.3 GB used, ~2.4 GB free
+
+---
+
 ## Session Log — 2026-04-29 05:18 UTC
 
 ### Health Check — All Systems Nominal

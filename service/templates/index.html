@@ -1276,6 +1276,10 @@
     <div class="sec-body" id="briefing-body" style="overflow-y:auto;">
       <div id="briefing-content">Loading...</div>
       <div id="briefing-meta"></div>
+      <div id="briefing-recent-conv" style="border-top: 1px solid var(--border); margin-top: 8px; padding-top: 6px; display: none;">
+        <div style="font-size:9px; letter-spacing:0.1em; color:var(--muted); margin-bottom:6px;">RECENT CONVERSATIONS</div>
+        <div id="briefing-recent-conv-list"></div>
+      </div>
       <div id="pending-crons" style="border-top: 1px solid var(--border); margin-top: 8px; padding-top: 6px; display: none;">
         <div id="pending-crons-header" style="font-size:9px; letter-spacing:0.1em; color:var(--muted); margin-bottom:4px;"></div>
         <div id="pending-crons-list"></div>
@@ -2376,6 +2380,28 @@ async function loadBriefing() {
     meta.textContent = '';
   }
 
+  // Recent conversations — show latest 5 across all platforms
+  const recentConv = b.recent_conversations || [];
+  const convSection = $('briefing-recent-conv');
+  const convList = $('briefing-recent-conv-list');
+  if (recentConv.length > 0) {
+    convSection.style.display = 'block';
+    convList.innerHTML = recentConv.slice(0, 5).map(s => {
+      const plat = s.platform || '?';
+      const icon = plat === 'discord' ? 'DC' : plat === 'telegram' ? 'TG' : plat === 'cron' ? 'CR' : '??';
+      const cls = plat === 'discord' ? 'cyan' : plat === 'telegram' ? 'green' : 'amber';
+      const preview = esc((s.preview || '').slice(0, 80));
+      const name = esc((s.display_name || s.session_id || '').slice(0, 35));
+      return `<div class="briefing-item" style="font-size:10px;">
+        <span class="briefing-item-dot" style="color:var(--${cls});font-size:9px;min-width:18px;">${icon}</span>
+        <span style="color:var(--text-bright);">${name}</span>
+        <span style="color:var(--muted);font-size:9px;"> — ${preview}…</span>
+      </div>`;
+    }).join('');
+  } else {
+    convSection.style.display = 'none';
+  }
+
   // Upcoming cron timeline — show next 6 jobs with countdown timers
   const upcoming = crons.filter(c => c.next_run).slice(0, 6);
   const timeline = $('pending-crons');
@@ -3091,7 +3117,7 @@ function invokeSkill(name) {
   $('cmd-input').value = '!' + name;
   $('cmd-input').focus();
   showSkillHint(name);
-  switchTab('graph');
+  // Stay in current tab — command bar is always visible in center column
 }
 
 function showSkillHint(name) {

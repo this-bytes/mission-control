@@ -882,6 +882,37 @@ class HermesAdaptor:
         except Exception:
             pass
 
+        # ── Recent conversations (across all platforms) ─────────────────────
+        try:
+            sessions_dir = self._hermes_home / "sessions"
+            if sessions_dir.exists():
+                all_sessions = [
+                    f for f in sessions_dir.iterdir()
+                    if f.is_file() and f.suffix == ".json"
+                ]
+                all_sessions.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+                for sf in all_sessions[:10]:
+                    with sf.open() as f:
+                        data = json.load(f)
+                    msgs = data.get("messages", [])
+                    if not msgs:
+                        continue
+                    first_user = next(
+                        (m.get("content", "")[:200] for m in msgs if m.get("role") == "user"),
+                        ""
+                    )
+                    briefing["recent_conversations"].append({
+                        "session_id": data.get("session_id", sf.stem),
+                        "platform":    data.get("platform", "unknown"),
+                        "display_name": data.get("display_name",
+                                                sf.stem.replace("session_", "").replace("_", " ")[:60]),
+                        "message_count": data.get("message_count", 0),
+                        "updated_at":   sf.stat().st_mtime,
+                        "preview":      first_user,
+                    })
+        except Exception:
+            pass
+
         return briefing
 
     # ── OpenAI-compatible API server (port 8642) ────────────────────────────────
