@@ -196,6 +196,36 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-29 20:11 UTC
+
+### Scheduled Health Check — All Systems Nominal
+
+**Issue found and fixed:** Service was running old code (pre-GitHub PR panel commit `adab4cb`). Restarted to pick up new endpoint.
+
+**Status:**
+- Service uptime: ~1min (PID 471875, fresh restart at 20:11 AEST)
+- 3/3 platforms: telegram ✅, discord ✅, api_server ✅
+- All 12 API endpoints verified healthy:
+  - `/api/ping` ✅ `/api/status` ✅ `/api/cron-jobs` ✅ (25 jobs)
+  - `/api/context` ✅ `/api/briefing` ✅ `/api/cron-intel` ✅
+  - `/api/metrics` ✅ `/api/system-info` ✅ `/api/sessions` ✅ (8 sessions)
+  - `/api/graph` ✅ (34 nodes, 11 edges) `/api/skills-catalog` ✅ (92 skills)
+  - `/api/github/prs` ✅ (1 open PR: dependabot jinja2 bump)
+- Streaming command (`/api/command/stream`) works — SSE token stream verified
+- Disk: 95% (29G/32G, 1.6GB free)
+- Git commit: `adab4cb` (GitHub PR panel committed 2026-04-29 19:07)
+
+**No Blockers**
+
+### Open Items (Not Blockers)
+1. **Memory graph** — 20/34 nodes "concept" type (entity_type NULL in Hermes)
+2. **Homelab network (10.87.1.0/24)** — NOT CODE: server has no route to that subnet
+3. **Token usage display** — `sessions.json` only has `last_prompt_tokens`; `total_tokens/input_tokens/output_tokens` are 0 from Hermes. This is a Hermes-level data gap, not a code bug.
+4. **Dependabot vulnerabilities** — gh CLI token can't access dependabot/alerts (403). Not resolvable without elevated token permissions.
+5. **Disk at 95%** — 29G/32G, 1.6GB free. Continues to be tight on 32GB partition.
+
+---
+
 ## Session Log — 2026-04-29 18:02 UTC
 
 ### Scheduled Health Check — All Systems Nominal
@@ -2153,4 +2183,5 @@ Fix: Added fallback that checks `_graphData.nodes` (all nodes including concept)
 2. **Homelab network (10.87.1.0/24)** — NOT CODE: server has no route to that subnet
 3. **Disk at 95%** — 29G/32G, 1.8GB free; still tight on 32GB partition
 4. **Token usage display** — session .jsonl files not read for per-session token counts
-5. **Dependabot vulnerabilities** — 3 moderate on this-bytes/mission-control
+5. **Dependabot vulnerabilities** — gh CLI token can't access dependabot/alerts (403). Not resolvable without elevated token permissions.
+6. **Disk at 95%** — 29G/32G, 1.6GB free. Continues to be tight on 32GB partition.
