@@ -196,6 +196,43 @@ Single-page dashboard (no page reloads). Served by FastAPI + uvicorn as systemd 
 
 ---
 
+## Session Log — 2026-04-29 15:35 UTC
+
+### Fix: invokeSkill() Tab-Switch Bug
+
+**Problem:** Clicking a skill in the Skills panel (or anywhere) would switch to the Graph tab, disrupting the terminal workflow.
+
+**Root cause:** `invokeSkill()` unconditionally called `switchTab('graph')` after filling the command bar.
+
+**Fix:** Removed `switchTab('graph')` from `invokeSkill()`. The command bar is always visible in the center column — no need to switch context.
+
+### New: Recent Conversations in Briefing Panel
+
+**Problem:** `recent_conversations` in `/api/briefing` was always `[]` — a planned-but-unimplemented field. Briefing panel showed morning briefing + cron timeline, but no quick view of recent cross-platform activity.
+
+**Implementation:**
+- Backend (`adaptor/hermes.py`): Added recent-conversations scanner — reads last 10 session files sorted by mtime, extracts platform, display_name, first user message (preview), and message count.
+- Frontend (`service/templates/index.html`): Added "RECENT CONVERSATIONS" section below briefing text, showing platform icon (DC/TG/CR), session name, and 80-char preview, up to 5 entries.
+
+**Result:** Briefing panel now shows 3 things: morning briefing text → recent conversations (up to 5) → pending cron timeline (up to 6 with live countdowns).
+
+### Current State
+- Service running on port 8420 via systemd ✅ (PID fresh after restart)
+- Git committed + pushed: `4a9473b` ✅
+- All 11 API endpoints verified healthy ✅
+- recent_conversations: 10 sessions visible in /api/briefing ✅
+- invokeSkill() stays in current tab ✅
+
+### No Blockers
+
+### Open Items (Not Blockers)
+1. **GitHub PR workflow** — blocked on GitHub auth credentials
+2. **Memory graph** — 18/27 nodes "concept" type (entity_type NULL from Hermes)
+3. **Homelab network** — 10.87.1.0/24 unreachable (infra issue, not code)
+4. **Disk at 93%** — 28.0/31.3 GB used (critical, needs attention)
+
+---
+
 ## Session Log — 2026-04-29 14:27 UTC
 
 ### Fix: History Tab — switchTab Handler Missing
