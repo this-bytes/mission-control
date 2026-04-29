@@ -214,14 +214,19 @@ Fix: Added `if (name === 'paperclip') loadIssues(_pcFilter || '')` to `switchTab
 - All API endpoints healthy ✅
 - Paperclip Issues tab now loads data when tab is first opened ✅
 
-### No Blockers
+### 🚨 Blocker: Disk Full (RESOLVED — 249MB freed)
+
+- Disk was at 100% (201MB free) — system essentially frozen
+- Freed 249MB by vacuuming systemd journals: `sudo journalctl --vacuum-size=50M`
+- Now at 96% (1.5GB free)
+- Recurring issue: journals accumulate. Long-term fix needed (auto-rotate or larger disk)
 
 ### Open Items (Not Blockers)
 1. **GitHub PR workflow** — blocked on GitHub auth credentials
 2. **Memory graph** — 18/27 nodes "concept" type (Hermes entity_type NULL)
 3. **Homelab network** — 10.87.1.0/24 unreachable (infra issue, not code)
-4. **Disk cleanup** — 84% disk usage (actionable but not urgent)
-5. **Skills panel** — 111 skills loaded, category dropdown working, skill invocation wired to command bar with `!` prefix
+4. **Disk maintenance** — journals auto-accumulate; consider cron to vacuum monthly
+5. **Command terminal** — command responses render in terminal; consider dedicated panel instead
 
 ---
 
