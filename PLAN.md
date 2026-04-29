@@ -2115,8 +2115,42 @@ Fix: Added fallback that checks `_graphData.nodes` (all nodes including concept)
 ### No Blockers
 
 ### Open Items (Not Blockers)
-1. **GitHub PR workflow** — blocked on GitHub auth credentials
-2. **Memory graph** — 18/27 nodes "concept" type (entity_type NULL in Hermes)
+1. ~~**GitHub PR workflow**~~ — RESOLVED: `gh` CLI authenticated as `this-bytes`, GitHub PR panel added
+2. **Memory graph** — 20/34 nodes "concept" type (Hermes entity_type NULL for conversational artifacts)
 3. **Homelab network (10.87.1.0/24)** — NOT CODE: server has no route to that subnet
-4. **Disk at 98.8%** — 29.6GB used / 31.3GB total; actionable cleanup needed
+4. **Disk at 95%** — 29G/32G, 1.8GB free (improved from 98.8%)
 5. **Token usage display** — session .jsonl files not read for per-session token counts
+6. **Dependabot vulnerabilities** — 3 moderate on this-bytes/mission-control (not yet remediated)
+
+---
+
+## Session Log — 2026-04-29 19:05 UTC
+
+### Health Check + GitHub PR Panel Committed
+
+**Uncommitted changes found** — committed and pushed:
+- `service/web.py`: New endpoints `GET /api/github/prs` + `POST /api/github/prs/{pr_number}/merge` via `gh` CLI
+- `service/templates/index.html`: New "GitHub" tab with PR list + merge buttons
+- `PLAN.md`: Updated
+
+**Status:**
+- Service uptime: ~3h 22min (PID 457987, no restarts since 15:42 AEST) ✅
+- 3/3 platforms: telegram ✅, discord ✅, api_server ✅
+- 12 API endpoints verified healthy:
+  - `/api/ping` ✅ `/api/status` ✅ `/api/cron-jobs` ✅ `/api/context` ✅
+  - `/api/briefing` ✅ `/api/cron-intel` ✅ `/api/metrics` ✅ `/api/system-info` ✅
+  - `/api/sessions` ✅ (8 sessions) `/api/graph` ✅ (34 nodes, 14 real, 10 edges)
+  - `/api/skills-catalog` ✅ (92 skills) `/api/github/prs` ✅ (new endpoint)
+- Paperclip issues: returns empty list (0 issues — expected if no active issues)
+- GitHub: `gh` CLI authenticated as `this-bytes` ✅
+- Git pushed: `4d50cf3` ✅
+- Disk: 95% (29G/32G, 1.8GB free — improved from 98.8%)
+
+**No Blockers**
+
+### Open Items (Not Blockers)
+1. **Memory graph** — 20/34 nodes "concept" type (entity_type NULL in Hermes)
+2. **Homelab network (10.87.1.0/24)** — NOT CODE: server has no route to that subnet
+3. **Disk at 95%** — 29G/32G, 1.8GB free; still tight on 32GB partition
+4. **Token usage display** — session .jsonl files not read for per-session token counts
+5. **Dependabot vulnerabilities** — 3 moderate on this-bytes/mission-control
