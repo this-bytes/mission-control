@@ -1610,7 +1610,7 @@ function api(path, method, body) {
 
 function esc(s) {
   if (s == null) return '';
-  return String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /* ── Clock ─────────────────────────────────────────────── */
@@ -2062,7 +2062,7 @@ function ciRenderGaps(intel) {
       <div class="ci-gap-reason">${esc(gap.reason || gap.description || '')}</div>
       ${gap.slot_expr ? `<div class="ci-gap-reason" style="margin-top:3px">Try: <strong style="color:var(--cyan)">${esc(gap.slot_expr)}</strong></div>` : ''}
       ${gap.suggested_prompt ? `<div style="font-size:9px;color:var(--text);margin-top:4px;line-height:1.4">${esc(gap.suggested_prompt.slice(0, 120))}${gap.suggested_prompt.length > 120 ? '…' : ''}</div>` : ''}
-      <button class="ci-create-btn" onclick="openCronModalFromGap(${JSON.stringify(gap).replace(/"/g, '&quot;')})">+ Create Cron</button>
+      <button class="ci-create-btn" data-gap="${esc(JSON.stringify(gap))}" onclick="openCronModalFromGap(JSON.parse(this.dataset.gap))">+ Create Cron</button>
     </div>`;
   });
   html += '</div>';
@@ -2121,7 +2121,7 @@ function ciRenderRecs(intel) {
         <div class="ci-rec-proposal-val">${esc(rec.proposal.prompt.slice(0, 100))}…</div>
       </div>` : ''}
       <div class="ci-rec-actions">
-        <button class="ci-rec-action-btn ci-rec-create" onclick="openCronModalFromRec(${JSON.stringify(rec).replace(/"/g, '&quot;')})">+ Create</button>
+        <button class="ci-rec-action-btn ci-rec-create" data-rec="${esc(JSON.stringify(rec))}" onclick="openCronModalFromRec(JSON.parse(this.dataset.rec))">+ Create</button>
         <button class="ci-rec-action-btn ci-rec-dismiss" onclick="dismissCIRec(${i})">Dismiss</button>
       </div>
     </div>`;
